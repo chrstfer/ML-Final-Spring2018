@@ -1,0 +1,46 @@
+#+TITLE: Machine Learning Final -- Topic Paper
+#+AUTHOR: Chris Carrigan Brolly, Matt Sears
+#+PROPERTY: 
+#+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
+
+* Machine Learning Final -- Analysis/Paper/Presentation
+
+** Topic 
+
+- MNIST Handwriting :: SVM vs ANN in R with kerasa
+a priori: Discuss the potential relative strengths and weaknesses of ANNs and
+  SVMs for the dataset. Discuss the history of the dataset and the state of the
+  art in computer vision today. 
+1. Implement the methods (in R with Keras API for linear algebra)
+   1. ANN -- Simple NN (a couple layers, with gradient descent and backprop)
+   2. SVM -- Simple SVC 
+2. Analyze the performance of our implementations
+   1. Compare and contrast our two implementations with known good
+      implementations in keras
+3. Write up and discuss our analysis and conclusions with:
+   - confusion tables, performance tables, ROC curves
+   - discussion of the algorithms and challenges during our implementation,
+     potential future improvements
+   - Discuss how our implementations compared with production implementations
+     (keras)
+
+We will do it all in org, with a git repository to share our work and
+changes. The final project turned in will be an archive containing the org
+source file, the generated figures, a typeset pdf of the paper, and a typeset
+slideshow for our presentation. 
+
+
+- Note :: if perhaps this is biting off more than we can chew, we will instead 
+just on ANNs, following the steps as laid out above, and fo
+
+** Dataset
+   The dataset we have chosen is the well known [[http://yann.lecun.com/exdb/mnist/][MNIST Handwriting recognition
+   dataset]], a mature and well-studied dataset originally compiled [[http://yann.lecun.com/exdb/publis/index.html#lecun-98][in 1998]]. There
+   have since been many papers on ML algorithms that use this as their dataset,
+   so we have a wealth of information on the problem at hand that we can refer
+   to during our implementation process. This dataset is essentially the
+   benchmark for computer vision systems in the modern world.
+
+
+
+

@@ -1,0 +1,86 @@
+# -*- org-confirm-babel-evaluate: nil; -*-
+#+AUTHOR: Chris Carrigan Brolly
+#+TITLE: Artificial Neural Nets 
+#+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
+#+PROPERTY: header-args :session
+
+* Setup
+** R Setup  
+  #+BEGIN_SRC R :results none :export source
+    getLabels <- function(lbldb, nget=0) {
+	magic  <- readBin(lbldb, what="integer", n=1, endian="big", size=4)
+	if(magic != 2049)
+	    return(NULL)
+	n.lbls    <- readBin(lbldb, what="integer", n=1,    endian="big", size=4)
+	if(nget==0)
+	    nget=n.lbls
+
+	labels <- readBin(lbldb, what="integer", n=nget, endian="big",  size=1)
+
+	close(lbldb)
+	return(labels)
+    }
+
+    getImages <- function(imgdb, nget=0, progress=FALSE) {
+	magic  <- readBin(imgdb, what="integer", n=1, endian="big", size=4)
+	## if(magic != 2049)
+	##     return(NULL)
+
+	n.imgs <- readBin(imgdb, what="integer", n=1, endian="big", size=4)
+	if(nget==0)
+	    nget <- n.imgs # trunc(sqrt(n.imgs))
+
+	n.rows <- readBin(imgdb, what="integer", n=1, endian="big", size=4)
+	n.cols <- readBin(imgdb, what="integer", n=1, endian="big", size=4)
+
+	print(gettextf("Getting %d %dx%d Images", nget, n.rows, n.cols))
+
+	images <- c()
+	for(i in 1:nget) {
+	    .img   <- matrix(readBin(imgdb, what="integer", n=n.rows*n.cols, endian="big", size=1), nrow=n.rows, ncol=n.cols)
+	    images <-  c(images, list(.img))
+	    if(progress && i %% trunc(sqrt(nget)) == 0) 
+		print(gettextf("%2.2f%%", round((100*i)/nget, digits=2)))
+	}
+	close(imgdb)
+	return(images)
+    }
+  #+END_SRC
+
+
+
+** Data Setup
+
+  |---------------------+----------+-------------------------------------------------------------|
+  | ID                  | size (b) | Link                                                        |
+  |---------------------+----------+-------------------------------------------------------------|
+  | training set images |  9912422 | http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz |
+  | training set labels |    28881 | http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz |
+  | test set images     |  1648877 | http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz  |
+  | test set labels     |     4542 | http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz  |
+  |---------------------+----------+-------------------------------------------------------------|
+
+  tr.files.imgs <- "datasets/training/images"
+  tr.files.lbls <- "datasets/training/labels"
+  ts.files.imgs <- "datasets/testing/images"
+  ts.files.lbls <- "datasets/testing/labels" 
+
+
+#+BEGIN_SRC R :results output graphics :file imgs/setup/ex1.png
+  ## Works
+  tr.labels <- getLabels(gzfile("datasets/training/labels", "rb"), nget=256)
+  tr.images <- getImages(gzfile("datasets/training/images", "rb"), nget=256, progress=TRUE)
+
+  par(mar=rep(0,4))
+  image(tr.images[[8]], useRaster=TRUE, col=seq(256))
+#+END_SRC
+
+#+RESULTS:
+[[file:imgs/setup/ex1.png]]
+
+
+* ANN Implementation
+
+
+* Analysis
+
