@@ -2,7 +2,7 @@
 #+AUTHOR: Chris Carrigan Brolly
 #+TITLE: Artificial Neural Nets 
 #+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
-#+PROPERTY: header-args :session
+#+PROPERTY: header-args :session ANNimpl
 
 * Setup
 ** R Setup  
@@ -50,7 +50,7 @@
 
 
 ** Data Setup
-
+*** Data (Links)
   |---------------------+----------+-------------------------------------------------------------|
   | ID                  | size (b) | Link                                                        |
   |---------------------+----------+-------------------------------------------------------------|
@@ -60,6 +60,7 @@
   | test set labels     |     4542 | http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz  |
   |---------------------+----------+-------------------------------------------------------------|
 
+*** Data (import)
   tr.files.imgs <- "datasets/training/images"
   tr.files.lbls <- "datasets/training/labels"
   ts.files.imgs <- "datasets/testing/images"
@@ -68,19 +69,71 @@
 
 #+BEGIN_SRC R :results output graphics :file imgs/setup/ex1.png
   ## Works
-  tr.labels <- getLabels(gzfile("datasets/training/labels", "rb"), nget=256)
-  tr.images <- getImages(gzfile("datasets/training/images", "rb"), nget=256, progress=TRUE)
+  tr.labels <- as.vector(getLabels(gzfile("datasets/training/labels", "rb"), nget=256))
+  tr.images <- getImages(gzfile("datasets/training/images", # data's filename
+				"rb"), # read it as binary
+			 ## Get 256 of the entries
+			 nget=256, progress=TRUE)
+  tr.im.matrix <- do.call("rbind", # create rows out of the input data
+			  lapply(tr.images, as.vector)) # transform each image
+							# matrix into a vector
 
-  par(mar=rep(0,4))
-  image(tr.images[[8]], useRaster=TRUE, col=seq(256))
+  oldpar <- par(mar=rep(0,4))
+  image(tr.images[[8]], useRaster=TRUE, col=seq(2^8)) 
+  par(oldpar)
+
+  tr.df <- cbind(tr.im.matrix, tr.in.labels) # now create a data frame
 #+END_SRC
 
 #+RESULTS:
 [[file:imgs/setup/ex1.png]]
 
 
-* ANN Implementation
+#+BEGIN_SRC R :results table drawer :colnames yes
+  table(Labels=tr.df[,ncol(tr.df)])
+  ## sprintf("Row x Col: %d x %d", nrow(tr.df), ncol(tr.df))
+#+END_SRC
 
+#+RESULTS:
+:RESULTS:
+| Labels | Freq |
+|--------+------|
+|      0 |   30 |
+|      1 |   35 |
+|      2 |   25 |
+|      3 |   30 |
+|      4 |   24 |
+|      5 |   17 |
+|      6 |   24 |
+|      7 |   26 |
+|      8 |   19 |
+|      9 |   26 |
+:END:
+
+
+* ANN Implementation
+  We will implement the multilayer perceptron with backpropagation.
+
+#+BEGIN_SRC R 
+  ##
+  ## 
+  ##
+
+  .in <- tr.df[1,-ncol(tr.df)]
+
+  ann.layers <- lapply(X=numeric(4), FUN=function(a.var) return(matrix(nrow=5, ncol=1, data=rnorm(5))))
+
+#+END_SRC
 
 * Analysis
+#+BEGIN_SRC R
+ 
+#+END_SRC
 
+
+* Sources
+** Biblio
+   These I read in the process of completing this project. In places where
+   specific citations could be made, I have places them and linked here. 
+
+- https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf
