@@ -6,6 +6,11 @@
 
 * Setup
 ** R Setup  
+*** Libraries
+#+BEGIN_SRC R :results none
+library(sigmoid)
+#+END_SRC
+*** Functions
   #+BEGIN_SRC R :results none :export source
     getLabels <- function(lbldb, nget=0) {
 	magic  <- readBin(lbldb, what="integer", n=1, endian="big", size=4)
@@ -78,11 +83,12 @@
 			  lapply(tr.images, as.vector)) # transform each image
 							# matrix into a vector
 
+  tr.df <- cbind(tr.im.matrix, tr.labels) # now create a data frame
+
   oldpar <- par(mar=rep(0,4))
   image(tr.images[[8]], useRaster=TRUE, col=seq(2^8)) 
   par(oldpar)
 
-  tr.df <- cbind(tr.im.matrix, tr.in.labels) # now create a data frame
 #+END_SRC
 
 #+RESULTS:
@@ -111,24 +117,127 @@
 :END:
 
 
-* ANN Implementation
-  We will implement the multilayer perceptron with backpropagation.
-
+* Implementation: Multilayer Perceptron with Backprop
+  - TODO ::
+    - function to apply an input and get an output
+      - function to run layer
+      - 
+** Layers Class
 #+BEGIN_SRC R 
   ##
-  ## 
+  ## WX = A
   ##
 
-  .in <- tr.df[1,-ncol(tr.df)]
+  summary.layers <- function(layers) {
+      lapply(X=layers, summary)
+  }
 
-  ann.layers <- lapply(X=numeric(4), FUN=function(a.var) return(matrix(nrow=5, ncol=1, data=rnorm(5))))
+  layers.gen.layers <- function(n=4, lengths, out.classes, in.length=784) {
 
+      layers.gen.layer <- function(n.in, n.out) {
+	  .weights <- matrix(data=rnorm(n.in*n.out),
+			     ncol=n.in,
+			     nrow=n.out)
+	  .nodes <- matrix(nrow=n.out,
+			   ncol=1)
+	  layer <- list()
+	  layer$nodes <- .nodes
+	  layer$weights <- .weights
+	  class(layer) <- "layer"
+	  return(layer)
+      }
+
+      layers.gen.hlayer <- function(in.layer) {
+	  n.out <- lengths[in.layer]
+	  if(in.layer == 1) {
+	      n.in <- in.length
+	  }
+	  else {
+	      n.in <- lengths[in.layer-1]
+	  }
+
+	  hlayer <- layers.gen.layer(n.in, n.out)                                          
+
+	  return(hlayer)
+      }
+
+      layers.gen.olayer <- function(n.out=0, classes=as.factor(1:10)) {
+	  if(n.out == 0)
+	      n.out = length(classes)
+	  n.in <- lengths[length(lengths)]
+	  .olayer <- layers.gen.layer(n.in, n.out)
+	  class(.olayer) <- "olayer"
+	  oclass <- class(.olayer)
+	  inherits(.olayer, oclass)
+      }
+
+      model <- list()
+      model$hlayers <- lapply(X=1:n, layers.gen.hlayer)
+      model$olayer <- layers.gen.olayer(n.out=length(out.classes), classes=out.classes)
+      return(model)
+  }
+
+  layers.do_layer <- function(layer, input, sig=sigmoid) {
+      typeof(layer$weights)
+      typeof(input)
+      prod <- layer$weights %*% input
+      ## print(layer$nodes)
+
+      ## ret <- list()
+      ## ret$weights <- layer$weights
+      ## ret$nodes <- sig(prod)
+      ## class(ret) <- "layer"
+      ## return(ret)
+      return(sig(prod))
+  }
+
+  ann.gen_model <- function(n=4, in.length=784,
+				  lengths=c(5, 4, 4, 4, 10),
+			    out.classes=as.factor(1:10),
+			    data) {
+      ## todo: make gen.layers return a layers object with all, then we can split
+      ## here and keep raw?
+      model <- layers.gen.hidden(n=4, in.length=784,
+				 lengths=c(5, 4, 4, 4, 10),
+				 out.classes=as.factor(1:10))
+      class(model) <- "model.ann"
+      return(model)
+  }
+
+  ## basic layout, 4 layers of 5x1 
+  model <- ann.gen_model(n=4, in.length=784,
+			 lengths=c(5, 4, 4, 4, 10),
+			 out.classes=as.factor(1:10),
+			 data=tr.df[1,-ncol(tr.df)])
+  len <- length(model$hlayers)
+  mids <- numeric(len+1)
+
+  input  <- model$input
+  mids[1] <- input
+
+  for(k in 1:len) {
+      mids[k+1]  <- layers.do_layer(model$hlayers[[k]], mids[k])
+  }
+
+  output <- layers.do_layer(model$olayer, mids[len])
 #+END_SRC
+
+#+RESULTS:
+| 0.219679210159256 |
+| 0.447156772638455 |
+| 0.927703446173608 |
+| 0.517365026865628 |
+
+** Model
+
 
 * Analysis
 #+BEGIN_SRC R
  
 #+END_SRC
+
+* Conclusion
+
 
 
 * Sources
@@ -137,3 +246,5 @@
    specific citations could be made, I have places them and linked here. 
 
 - https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf
+- https://en.wikipedia.org/wiki/Perceptron
+- https://cran.r-project.org/web/packages/sigmoid/sigmoid.pdf
