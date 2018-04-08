@@ -131,102 +131,87 @@ library(sigmoid)
   summary.layers <- function(layers) {
       lapply(X=layers, summary)
   }
-
-  layers.gen.layers <- function(n=4, lengths, out.classes, in.length=784) {
-
-      layers.gen.layer <- function(n.in, n.out) {
-	  .weights <- matrix(data=rnorm(n.in*n.out),
-			     ncol=n.in,
-			     nrow=n.out)
-	  .nodes <- matrix(nrow=n.out,
-			   ncol=1)
-	  layer <- list()
-	  layer$nodes <- .nodes
-	  layer$weights <- .weights
-	  class(layer) <- "layer"
-	  return(layer)
-      }
-
-      layers.gen.hlayer <- function(in.layer) {
-	  n.out <- lengths[in.layer]
-	  if(in.layer == 1) {
-	      n.in <- in.length
-	  }
-	  else {
-	      n.in <- lengths[in.layer-1]
-	  }
-
-	  hlayer <- layers.gen.layer(n.in, n.out)                                          
-
-	  return(hlayer)
-      }
-
-      layers.gen.olayer <- function(n.out=0, classes=as.factor(1:10)) {
-	  if(n.out == 0)
-	      n.out = length(classes)
-	  n.in <- lengths[length(lengths)]
-	  .olayer <- layers.gen.layer(n.in, n.out)
-	  class(.olayer) <- "olayer"
-	  oclass <- class(.olayer)
-	  inherits(.olayer, oclass)
-      }
-
-      model <- list()
-      model$hlayers <- lapply(X=1:n, layers.gen.hlayer)
-      model$olayer <- layers.gen.olayer(n.out=length(out.classes), classes=out.classes)
-      return(model)
+  summary.layer <- function(layer) {
+      print(layer$nodes)
+      print(layer$weights)
   }
 
-  layers.do_layer <- function(layer, input, sig=sigmoid) {
-      typeof(layer$weights)
-      typeof(input)
-      prod <- layer$weights %*% input
-      ## print(layer$nodes)
 
-      ## ret <- list()
-      ## ret$weights <- layer$weights
-      ## ret$nodes <- sig(prod)
-      ## class(ret) <- "layer"
-      ## return(ret)
+  layers.do_layer <- function(k,model,sig=model$sigmoid) {
+    
+    
       return(sig(prod))
   }
 
-  ann.gen_model <- function(n=4, in.length=784,
-				  lengths=c(5, 4, 4, 4, 10),
-			    out.classes=as.factor(1:10),
-			    data) {
-      ## todo: make gen.layers return a layers object with all, then we can split
-      ## here and keep raw?
-      model <- layers.gen.hidden(n=4, in.length=784,
-				 lengths=c(5, 4, 4, 4, 10),
-				 out.classes=as.factor(1:10))
-      class(model) <- "model.ann"
+
+  ## ideally what will become predict.modelann
+  model.do_model <- function() {
+    
+  }
+
+  ## args :: input - 
+  model.gen.annc <- function(length.input,
+			     length.hidden,
+			     length.output,
+			     out.classes=as.factor(1:length.output),
+			     input=c(0,0)) {
+      model <- list()
+      class(model) <- "model.ann.classifier"
+   
+      lengths <- c(length.input,
+		   length.hidden,
+		   length.output)
+      print(lengths)
+      n.layers <- length(lengths)
+
+      layers.gen_nodes <- function()
+	  return(lapply(1:n.layers,
+			function(n)
+			    matrix(nrow=lengths[n],
+				   ncol=1,data=rep(0,lengths[n]))))
+    
+      layers.gen_weights <- function(layers.nodes=model[["nodes"]])
+	  return(lapply(2:length(layers.nodes), function(k) {
+	      .c <- length(layers.nodes[[k]])
+	      .r <- length(layers.nodes[[k-1]])
+	      print(paste("K: ",k))
+	      print(.c)
+	      print(.r)
+	      return(matrix(rnorm(.r*.c),
+			    ncol=.c,
+			    nrow=.r))
+	  }))
+    
+      print(paste("Input Length:",     length.input))
+      print(paste("Number of Layers:", n.layers))
+      print(paste("Layer Lengths:",    toString(lengths)))
+      print(paste("Output Length:",    length.output))
+
+      model$nodes <- layers.gen_nodes()
+      model$weights <- c(0,layers.gen_weights(model[["nodes"]]))
+    
+      model$sigmoid <- sigmoid
+
+      model$input <- input
+    
       return(model)
   }
 
-  ## basic layout, 4 layers of 5x1 
-  model <- ann.gen_model(n=4, in.length=784,
-			 lengths=c(5, 4, 4, 4, 10),
-			 out.classes=as.factor(1:10),
-			 data=tr.df[1,-ncol(tr.df)])
-  len <- length(model$hlayers)
-  mids <- numeric(len+1)
+  ## basic layout, 4 layers of 5x1
+  test.input <- tr.df[1,-ncol(tr.df)]
+  model <- model.gen.annc(layerlens=c(5, 4, 4),
+			  input=test.input,
+			  out.classes=as.factor(1:10))
 
-  input  <- model$input
-  mids[1] <- input
+
+  mids <- list()
 
   for(k in 1:len) {
       mids[k+1]  <- layers.do_layer(model$hlayers[[k]], mids[k])
   }
-
   output <- layers.do_layer(model$olayer, mids[len])
 #+END_SRC
 
-#+RESULTS:
-| 0.219679210159256 |
-| 0.447156772638455 |
-| 0.927703446173608 |
-| 0.517365026865628 |
 
 ** Model
 
