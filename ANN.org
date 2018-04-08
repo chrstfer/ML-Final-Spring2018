@@ -122,31 +122,43 @@ library(sigmoid)
     - function to apply an input and get an output
       - function to run layer
       - 
-** Layers Class
-#+BEGIN_SRC R 
-  ##
-  ## WX = A
-  ##
+** Model Class
+#+BEGIN_SRC R :exports both
+  summary.model.ann.classifier <- function(model) {
+      print(paste("Number of Layers: ",model$nlayers))
+      print(paste("Respective Lengths: ",model$llengths))
+    
+      print("Layers: :")
+      summary(unlist(lapply(1:model$nlayers, function(k) {
+	  layer <- list()
+	  class(layer) <- "layer"
+	  layer$nodes <- model$nodes[[k]]
+	  layer$weights <- if(k==1) 0 else model$weights[[k-1]]
+	  return(layer)
+      })))
 
+      print("Sigmoid: ")
+      print(model$sigmoid)
+  }
+    
   summary.layers <- function(layers) {
       lapply(X=layers, summary)
   }
   summary.layer <- function(layer) {
+      print("sucka")    
       print(layer$nodes)
       print(layer$weights)
   }
 
 
-  layers.do_layer <- function(k,model,sig=model$sigmoid) {
-    
-    
+  layers.do_layer <- function(k,model,sig=model$sigmoid) {        
       return(sig(prod))
   }
 
 
   ## ideally what will become predict.modelann
   model.do_model <- function() {
-    
+
   }
 
   ## args :: input - 
@@ -157,7 +169,7 @@ library(sigmoid)
 			     input=c(0,0)) {
       model <- list()
       class(model) <- "model.ann.classifier"
-   
+
       lengths <- c(length.input,
 		   length.hidden,
 		   length.output)
@@ -169,7 +181,7 @@ library(sigmoid)
 			function(n)
 			    matrix(nrow=lengths[n],
 				   ncol=1,data=rep(0,lengths[n]))))
-    
+
       layers.gen_weights <- function(layers.nodes=model[["nodes"]])
 	  return(lapply(2:length(layers.nodes), function(k) {
 	      .c <- length(layers.nodes[[k]])
@@ -181,40 +193,38 @@ library(sigmoid)
 			    ncol=.c,
 			    nrow=.r))
 	  }))
-    
+
       print(paste("Input Length:",     length.input))
       print(paste("Number of Layers:", n.layers))
       print(paste("Layer Lengths:",    toString(lengths)))
       print(paste("Output Length:",    length.output))
 
+      model$nlayers <- n.layers
+      model$llengths <- lengths
       model$nodes <- layers.gen_nodes()
       model$weights <- c(0,layers.gen_weights(model[["nodes"]]))
-    
+
       model$sigmoid <- sigmoid
 
-      model$input <- input
-    
+      model$input <- matrix(input,ncol=1)
+
+
       return(model)
   }
 
   ## basic layout, 4 layers of 5x1
   test.input <- tr.df[1,-ncol(tr.df)]
-  model <- model.gen.annc(layerlens=c(5, 4, 4),
-			  input=test.input,
-			  out.classes=as.factor(1:10))
-
-
-  mids <- list()
-
-  for(k in 1:len) {
-      mids[k+1]  <- layers.do_layer(model$hlayers[[k]], mids[k])
-  }
-  output <- layers.do_layer(model$olayer, mids[len])
+  model <- model.gen.annc(5,c(3,3),5,input=rnorm(5))
 #+END_SRC
 
+#+RESULTS:
 
-** Model
+#+BEGIN_SRC R
+summary(model) 
+#+END_SRC
 
+#+RESULTS:
+: TRUE
 
 * Analysis
 #+BEGIN_SRC R
