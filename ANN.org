@@ -6,12 +6,9 @@
 
 * Setup
 ** R Setup  
-*** Libraries
-#+BEGIN_SRC R :results none
-library(sigmoid)
-#+END_SRC
-*** Functions
+*** Libraries and Functions
   #+BEGIN_SRC R :results none :export source
+    library(sigmoid)
     getLabels <- function(lbldb, nget=0) {
 	magic  <- readBin(lbldb, what="integer", n=1, endian="big", size=4)
 	if(magic != 2049)
@@ -51,7 +48,6 @@ library(sigmoid)
 	return(images)
     }
   #+END_SRC
-
 
 
 ** Data Setup
@@ -123,105 +119,107 @@ library(sigmoid)
       - function to run layer
       - 
 ** Model Class
-#+BEGIN_SRC R :exports both
+#+BEGIN_SRC R :exports both :results output
   summary.model.ann.classifier <- function(model) {
-      print(paste("Number of Layers: ",model$nlayers))
-      print(paste("Respective Lengths: ",model$llengths))
-    
-      print("Layers: :")
-      summary(unlist(lapply(1:model$nlayers, function(k) {
-	  layer <- list()
-	  class(layer) <- "layer"
-	  layer$nodes <- model$nodes[[k]]
-	  layer$weights <- if(k==1) 0 else model$weights[[k-1]]
-	  return(layer)
-      })))
-
-      print("Sigmoid: ")
-      print(model$sigmoid)
+      print(paste("Number of Layers: ", model$nlayers))
+      print(paste("Respective Lengths: ", toString(model$lengths)))
   }
-    
+
   summary.layers <- function(layers) {
       lapply(X=layers, summary)
   }
-  summary.layer <- function(layer) {
-      print("sucka")    
-      print(layer$nodes)
-      print(layer$weights)
-  }
 
+  ## print.layer <- function(layer) {
+  ##     cat("\n")    
+  ## }
 
-  layers.do_layer <- function(k,model,sig=model$sigmoid) {        
-      return(sig(prod))
-  }
-
-
-  ## ideally what will become predict.modelann
-  model.do_model <- function() {
-
-  }
-
-  ## args :: input - 
   model.gen.annc <- function(length.input,
 			     length.hidden,
 			     length.output,
 			     out.classes=as.factor(1:length.output),
-			     input=c(0,0)) {
+			     input=NULL) {    
       model <- list()
       class(model) <- "model.ann.classifier"
 
       lengths <- c(length.input,
 		   length.hidden,
 		   length.output)
-      print(lengths)
+      ## print(lengths)
       n.layers <- length(lengths)
 
-      layers.gen_nodes <- function()
-	  return(lapply(1:n.layers,
-			function(n)
-			    matrix(nrow=lengths[n],
-				   ncol=1,data=rep(0,lengths[n]))))
 
-      layers.gen_weights <- function(layers.nodes=model[["nodes"]])
-	  return(lapply(2:length(layers.nodes), function(k) {
-	      .c <- length(layers.nodes[[k]])
-	      .r <- length(layers.nodes[[k-1]])
-	      print(paste("K: ",k))
-	      print(.c)
-	      print(.r)
-	      return(matrix(rnorm(.r*.c),
-			    ncol=.c,
-			    nrow=.r))
-	  }))
-
-      print(paste("Input Length:",     length.input))
+      ## print(paste("Input Length:",     length.input))
       print(paste("Number of Layers:", n.layers))
       print(paste("Layer Lengths:",    toString(lengths)))
-      print(paste("Output Length:",    length.output))
+      ## print(paste("Output Length:",    length.output))
 
       model$nlayers <- n.layers
-      model$llengths <- lengths
-      model$nodes <- layers.gen_nodes()
-      model$weights <- c(0,layers.gen_weights(model[["nodes"]]))
+      model$lengths <- lengths
 
-      model$sigmoid <- sigmoid
+      .nodes <- lapply(1:n.layers,
+		       function(n)
+			   matrix(0,
+				  nrow=lengths[n],
+				  ncol=1))    
+      model$nodes <- .nodes
 
-      model$input <- matrix(input,ncol=1)
+      model$weights <- lapply(1:(length(model$nodes)-1),
+			      function(k)
+				  matrix(rnorm(lengths[k+1]),
+					 nrow=lengths[k+1],
+					 ncol=lengths[k]))
 
+      model$biases <- lapply(1:(length(model$nodes)-1),
+			      function(k)
+				  matrix(rnorm(lengths[k+1]),
+					 nrow=lengths[k+1]))
+
+      model$input <- if(length(input))
+			 as.matrix(input)
+		     else
+			 .nodes[[1]]
+
+      model$nodes[[1]] <- model$input
+
+      model$get_layer <- function(k, .model=model) { ## 1 -> k=nlayers->output=nodes[[n]]
+	  ret <- list()
+	  class(ret) <- "layer"
+	  ret$nodes  <- .model$nodes[k]
+	  ret$weights<- ifelse(k==1, 0, .model$weights[k-1])
+	  ret$biases <- ifelse(k==1, 0, .model$biases[k-1])        
+	  return(ret)
+      }
 
       return(model)
   }
 
+  forwardstep <- function(model, k) {
+      if(k==1)
+	  model$nodes[[k]] <- model$weights[[k-1]]%*%model$input
+      else
+	  model$nodes[[k]] <- model$weights[[k-1]]%*%model$nodes[[k-1]]
+      return(model)
+  }
+
+  predict.model.ann.classifier <- function(model, input) {
+
+  }
+
+
   ## basic layout, 4 layers of 5x1
-  test.input <- tr.df[1,-ncol(tr.df)]
-  model <- model.gen.annc(5,c(3,3),5,input=rnorm(5))
+  model <- model.gen.annc(2,2,1, input=rbinom(n=2, size=1, prob=0.5))
+  names(model)
+  print(model$get_layer(1))
 #+END_SRC
 
 #+RESULTS:
+: [1] "Number of Layers: 3"
+: [1] "Layer Lengths: 2, 2, 1"
+: [1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
+: [7] "get_layer"
+: [1] "Number of Layers:  3"
+: [1] "Respective Lengths:  2, 2, 1"
 
-#+BEGIN_SRC R
-summary(model) 
-#+END_SRC
 
 #+RESULTS:
 : TRUE
