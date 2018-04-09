@@ -114,10 +114,19 @@
 
 
 * Implementation: Multilayer Perceptron with Backprop
-  - TODO ::
-    - function to apply an input and get an output
-      - function to run layer
-      - 
+- Features ::
+  - builds arbitrarily layered ANN model
+  - has weights (rnorm), biases(rnorm), and layer nodes
+  - has member function for layer extraction
+    - returns class "layer" with 3 member lists for the given layers data
+- TODO ::
+  - predict function :: feedforward (recursive chain of feedforwardstep?)
+  - train function ::   backprop (step then recursive chain?)
+  - summary functions :: layer and model
+  - print functions :: layer, model
+  - plot functions :: model, inputs, outputs (eg plot the input rows of tr.df,
+                      and output of predict
+
 ** Model Class
 #+BEGIN_SRC R :exports both :results output
   summary.model.ann.classifier <- function(model) {
