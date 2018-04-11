@@ -163,20 +163,20 @@ table(Labels=tr.df[,ncol(tr.df)])
       model$biases <- .biases
 
       # .weights <- 
-       ## <- mapply(matrix,
-       ##                   ncol=1,
-       ##                   nrow=.lengths,
-       ##                   data=lapply(.lengths,rnorm))
+      ## <- mapply(matrix,
+      ##                   ncol=1,
+      ##                   nrow=.lengths,
+      ##                   data=lapply(.lengths,rnorm))
 
       ## TODO: this needs to be converted to mapply or the function needs to be
       ## fixed, rn it errors
       .weights <- lapply(1:(length(model$nodes)-1),
-			 function(k)
-			     matrix(rnorm(lengths[k+1]*lengths[k])),
-			 nrow=lengths[],
-			 ncol=lengths[]
-			 )
-    
+			 function(k) {
+			     matrix(rnorm(lengths[k+1]*lengths[k]),
+				    nrow=lengths[[k]],
+				    ncol=lengths[[k-1]])
+			 })
+
       model$weights <- .weights
 
       ## model$biases <- lapply(1:(length(model$nodes)-1),
@@ -232,9 +232,10 @@ table(Labels=tr.df[,ncol(tr.df)])
 	      if(k==model$nlayers)
 		  return(model$weights[[k]])
 	      return(model$weights[[k]]%*%model$nodes[[k]]+model$biases[[k]]) ## W1.N1+B1, 
-	  }        
-	  model$nodes[[2]] <- forwardstep(1)
-	  model$nodes[[3]] <- forwardstep(2)        
+	  }
+	  for(k in 2:model$nlayers) {
+	      model$layers[[k]] <- 
+	  }
 	  return(0)            
       }
 
@@ -246,7 +247,7 @@ table(Labels=tr.df[,ncol(tr.df)])
       feedforward <- function(input) {
 	  output <- list()
 	  return(output)
-      }
+      }            
 
       stopifnot(length(model$weights)==(model$nlayers-1))
       return(model)
@@ -258,34 +259,47 @@ table(Labels=tr.df[,ncol(tr.df)])
 
   forwardstep <- function(model, k) {
       if(k==1)
-	  model$nodes[[k]] <- model$weights[[k-1]]%*%model$input
+	  model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
       else
-	  model$nodes[[k]] <- model$weights[[k-1]]%*%model$nodes[[k-1]]
+	  model$nodes[[k]] <- activate(model$weights[[k]]%*%model$nodes[[k]])
       return(model)
   }
 
   predict.model.ann.classifier <- function(model, input) {
-
+      # Feed forward
+      forwardstep(model, 2:model$nlayers)
+      prediction <- activate(model$nodes[[nlayers]])
+      return(prediction)
   }
 
-
   ## basic layout, 4 layers of 5x1
-  model <- model.gen.annc(2,2,1, input=rbinom(n=2, size=1, prob=0.5))
+  model <- model.genstd()
   names(model)
   print(model$get_layer(1))
 #+END_SRC
 
 #+RESULTS:
-: [1] "Number of Layers: 3"
-: [1] "Layer Lengths: 2, 2, 1"
-: [1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
-: [7] "get_layer"
-: [1] "Number of Layers:  3"
-: [1] "Respective Lengths:  2, 2, 1"
+#+begin_example
+[1] "Number of Layers: 3"
+[1] "Layer Lengths: 2, 2, 1"
+Error in lengths[] : object of type 'closure' is not subsettable
+[1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
+[7] "get_layer"
+$nodes
+$nodes[[1]]
+     [,1]
+[1,]    0
 
 
-#+RESULTS:
-: TRUE
+$weights
+[1] 0
+
+$biases
+[1] 0
+
+attr(,"class")
+[1] "layer"
+#+end_example
 
 * Analysis
 #+BEGIN_SRC R
