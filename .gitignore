@@ -14,7 +14,6 @@ ANN.pdf
 ANN.tex
 .Rhistory
 
-
 # Created by https://www.gitignore.io/api/r,git,latex,emacs
 
 ### Emacs ###
@@ -351,3 +350,5 @@ vignettes/*.pdf
 
 
 # End of https://www.gitignore.io/api/r,git,latex,emacs
+imgs/
+
