@@ -120,7 +120,7 @@ table(Labels=tr.df[,ncol(tr.df)])
 
 ** Model Class
 #+BEGIN_SRC R :exports both :results output
-  summary.model.ann.classifier <- function(model) {
+  ccsummary.model.ann.classifier <- function(model) {
       print(paste("Number of Layers: ", model$nlayers))
       print(paste("Respective Lengths: ", toString(model$lengths)))
   }
@@ -130,17 +130,17 @@ table(Labels=tr.df[,ncol(tr.df)])
   }
 
   model.gen.annc <- function(length.input,
-			     length.hidden,
-			     length.output,                          
-			     out.classes=as.factor(1:length.output),
-			     input=NULL,
-			     debug=TRUE) {    
+                             length.hidden,
+                             length.output,                          
+                             out.classes=as.factor(1:length.output),
+                             input=NULL,
+                             debug=TRUE) {    
       model <- list()
       class(model) <- "model.ann.classifier"
 
       .lengths <- c(length.input,
-		   length.hidden,
-		   length.output)
+                   length.hidden,
+                   length.output)
       ## print(lengths)
       n.layers <- length(.lengths)
 
@@ -154,14 +154,17 @@ table(Labels=tr.df[,ncol(tr.df)])
       model$lengths <- .lengths
 
       .nodes <- mapply(matrix,
-		       data=0,
-		       ncol=1,
-		       nrow=.lengths)
+                       data=1,
+                       ncol=1,
+                       nrow=.lengths)
       model$nodes <- .nodes
 
       .biases <- numeric()
       .biases <- lapply(.lengths, rnorm)
-      model$biases <- .biases
+      model$biases <- mapply(matrix,
+                             data=.biases,
+                             ncol=1,
+                             nrow=.lengths)
 
       # .weights <- 
       ## <- mapply(matrix,
@@ -172,11 +175,11 @@ table(Labels=tr.df[,ncol(tr.df)])
       ## TODO: this needs to be converted to mapply or the function needs to be
       ## fixed, rn it errors
       .weights <- lapply(1:(length(model$nodes)-1),
-			 function(k) {
-			     matrix(rnorm(.lengths[k+1]*.lengths[k]),
-				    nrow=.lengths[[k+1]],
-				    ncol=.lengths[[k]])
-			 })
+                         function(k) {
+                             matrix(rnorm(.lengths[k+1]*.lengths[k]),
+                                    nrow=.lengths[[k+1]],
+                                    ncol=.lengths[[k]])
+                         })
 
       model$weights <- .weights
 
@@ -186,9 +189,9 @@ table(Labels=tr.df[,ncol(tr.df)])
       ##                                   nrow=lengths[k+1]))
 
       model$input <- if(length(input))
-			 as.matrix(input)
-		     else
-			 .nodes[[1]]
+                         as.matrix(input)
+                     else
+                         .nodes[[1]]
 
       model$nodes[[1]] <- model$input
 
@@ -204,12 +207,12 @@ table(Labels=tr.df[,ncol(tr.df)])
       ## update_layers <- function() {
       ##     layers <- list()
       ##     layers[[1]] <- list(Nodes=model$nodes[[1]],
-      ##     		    Weights=model$weights[[1]],
-      ##     		    Biases=model$biases[[1]])
+      ##                    Weights=model$weights[[1]],
+      ##                    Biases=model$biases[[1]])
       ##     for(i in 2:(model$nlayers-1)) {
       ##         layers[[i]] <- list(Weights=model$weights[[i]],
-      ##     			Biases=model$biases[[i]],
-      ##     			Nodes=model$nodes[[i+1]])
+      ##                        Biases=model$biases[[i]],
+      ##                        Nodes=model$nodes[[i+1]])
       ##     }            
       ##     model$layers <- layers
       ##     return(layers)
@@ -223,86 +226,73 @@ table(Labels=tr.df[,ncol(tr.df)])
       ##         return(layers)
       ##     else
       ##         return(list(Weights=0,
-      ##     		Biases=0,
-      ##     		Nodes=model$nodes[[k]]))
+      ##                Biases=0,
+      ##                Nodes=model$nodes[[k]]))
       ## }
 
-
-
-      model$predict <- function(input) {        
-	  forwardstep <- function(k) {
-	      if(k==model$nlayers)
-		  return(model$weights[[k]])
-	      return(model$weights[[k]]%*%model$nodes[[k]]+model$biases[[k]]) ## W1.N1+B1, 
-	  }
-	  for(k in 2:model$nlayers) {
-	      model$layers[[k]] <- forwardstep(k)
-            
-	  }
-	  return(0)            
-      }
-
+      ## Train from df with labels, return model
       model$train <- function(train.df, train.labels) {
-
+          ret.model <- list()
+          
+          return(ret.model)
       }
-
-      ## 
-      feedforward <- function(input) {
-	  output <- list()
-	  return(output)
-      }            
 
       stopifnot(length(model$weights)==(model$nlayers-1))
       return(model)
   }
 
   model.genstd <- function()
-      return(model.gen.annc(2,2,1, input=rbinom(n=2, size=1, prob=0.5)))
+      return(model.gen.annc(2,2,1, input=c(1,0)))
 
+  ## forwardstep <- function(model, k) {
+  ##     if(k==1)
+  ##         model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
+  ##     else
+  ##         model$nodes[[k]] <- activate(model$weights[[k]]%*%model$nodes[[k]])
+  ##     return(model)
+  ## }
 
-  forwardstep <- function(model, k) {
-      if(k==1)
-	  model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
-      else
-	  model$nodes[[k]] <- activate(model$weights[[k]]%*%model$nodes[[k]])
-      return(model)
-  }
-
-  predict.model.ann.classifier <- function(model, input) {
-      # Feed forward
-      forwardstep(model, 2:model$nlayers)
-      prediction <- activate(model$nodes[[nlayers]])
-      return(prediction)
+  predict.model.ann.classifier <- function(model,input,activate=NULL) {
+      if(length(activate))
+          activate <- sigmoid
+      else 
+          activate <- function(node) {
+              return(1/(1+exp(-node)))
+          }
+      
+      ## Feed forward
+      forwardstep <- function(k) {
+          if(k==1) {
+              model$nodes[[1]] <- as.matrix(input)
+              return(model$nodes[[1]])
+          }
+          else {
+              print(model$nodes[[k-1]])
+              return(activate((model$weights[[k-1]] %*% model$nodes[[k-1]]) + model$biases[[k]]))
+          }
+      }
+      .ret <- lapply(1:(model$nlayers), forwardstep)
+      ## if(model$debug)
+      ##     print(.ret)
+      return(.ret)
+      ## forwardstep(model, 2:model$nlayers)
+      ## prediction <- activate(model$nodes[[nlayers]])
+      ## return(prediction)
   }
 
   ## basic layout, 4 layers of 5x1
+  set.seed(1)
   model <- model.genstd()
   names(model)
-  print(model$get_layer(1))
+
 #+END_SRC
 
 #+RESULTS:
-#+begin_example
-[1] "Number of Layers: 3"
-[1] "Layer Lengths: 2, 2, 1"
-Error in lengths[] : object of type 'closure' is not subsettable
-[1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
-[7] "get_layer"
-$nodes
-$nodes[[1]]
-     [,1]
-[1,]    0
-
-
-$weights
-[1] 0
-
-$biases
-[1] 0
-
-attr(,"class")
-[1] "layer"
-#+end_example
+: [1] "Number of Layers: 3"
+: [1] "Layer Lengths: 2, 2, 1"
+: [1] "nlayers" "lengths" "nodes"   "biases"  "weights" "input"   "predict"
+: [8] "train"
+: Error in print(model$get_layer(1)) : attempt to apply non-function
 
 * Analysis
 #+BEGIN_SRC R
