@@ -48,26 +48,8 @@
 	return(images)
     }
   #+END_SRC
-
-
 ** Data Setup
-*** Data (Links)
-  |---------------------+----------+-------------------------------------------------------------|
-  | ID                  | size (b) | Link                                                        |
-  |---------------------+----------+-------------------------------------------------------------|
-  | training set images |  9912422 | http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz |
-  | training set labels |    28881 | http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz |
-  | test set images     |  1648877 | http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz  |
-  | test set labels     |     4542 | http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz  |
-  |---------------------+----------+-------------------------------------------------------------|
-
 *** Data (import)
-  tr.files.imgs <- "datasets/training/images"
-  tr.files.lbls <- "datasets/training/labels"
-  ts.files.imgs <- "datasets/testing/images"
-  ts.files.lbls <- "datasets/testing/labels" 
-
-
 #+BEGIN_SRC R :results output graphics :file imgs/setup/ex1.png
   ## Works
   tr.labels <- as.vector(getLabels(gzfile("datasets/training/labels", "rb"), nget=256))
@@ -79,21 +61,19 @@
 			  lapply(tr.images, as.vector)) # transform each image
 							# matrix into a vector
 
-  tr.df <- cbind(tr.im.matrix, tr.labels) # now create a data frame
+  tr.df <- cbind(as.factor(tr.labels), tr.im.matrix) # now create a data frame
 
   oldpar <- par(mar=rep(0,4))
   image(tr.images[[8]], useRaster=TRUE, col=seq(2^8)) 
   par(oldpar)
-
 #+END_SRC
 
 #+RESULTS:
 [[file:imgs/setup/ex1.png]]
 
-
-#+BEGIN_SRC R :results table drawer :colnames yes
-  table(Labels=tr.df[,ncol(tr.df)])
-  ## sprintf("Row x Col: %d x %d", nrow(tr.df), ncol(tr.df))
+- Label Frequency ::
+#+BEGIN_SRC R :results table drawer :colnames yes :exports results
+table(Labels=tr.df[,ncol(tr.df)])
 #+END_SRC
 
 #+RESULTS:
@@ -111,6 +91,16 @@
 |      8 |   19 |
 |      9 |   26 |
 :END:
+
+*** Data (Links)
+  |---------------------+----------+-------------------------------------------------------------|
+  | ID                  | size (b) | Link                                                        |
+  |---------------------+----------+-------------------------------------------------------------|
+  | training set images |  9912422 | http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz |
+  | training set labels |    28881 | http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz |
+  | test set images     |  1648877 | http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz  |
+  | test set labels     |     4542 | http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz  |
+  |---------------------+----------+-------------------------------------------------------------|
 
 
 * Implementation: Multilayer Perceptron with Backprop
@@ -135,84 +125,148 @@
   }
 
   summary.layers <- function(layers) {
-      lapply(X=layers, summary)
+      lapply(lapply(X=layers, str),print)
   }
 
-  ## print.layer <- function(layer) {
-  ##     cat("\n")    
-  ## }
-
   model.gen.annc <- function(length.input,
-                             length.hidden,
-                             length.output,
-                             out.classes=as.factor(1:length.output),
-                             input=NULL) {    
+			     length.hidden,
+			     length.output,                          
+			     out.classes=as.factor(1:length.output),
+			     input=NULL,
+			     debug=TRUE) {    
       model <- list()
       class(model) <- "model.ann.classifier"
 
-      lengths <- c(length.input,
-                   length.hidden,
-                   length.output)
+      .lengths <- c(length.input,
+		   length.hidden,
+		   length.output)
       ## print(lengths)
-      n.layers <- length(lengths)
+      n.layers <- length(.lengths)
 
 
       ## print(paste("Input Length:",     length.input))
-      print(paste("Number of Layers:", n.layers))
-      print(paste("Layer Lengths:",    toString(lengths)))
+      if(debug) print(paste("Number of Layers:", n.layers))
+      if(debug) print(paste("Layer Lengths:",    toString(.lengths)))
       ## print(paste("Output Length:",    length.output))
 
       model$nlayers <- n.layers
-      model$lengths <- lengths
+      model$lengths <- .lengths
 
-      .nodes <- lapply(1:n.layers,
-                       function(n)
-                           matrix(0,
-                                  nrow=lengths[n],
-                                  ncol=1))    
+      .nodes <- mapply(matrix,
+		       data=0,
+		       ncol=1,
+		       nrow=.lengths)
       model$nodes <- .nodes
 
-      model$weights <- lapply(1:(length(model$nodes)-1),
-                              function(k)
-                                  matrix(rnorm(lengths[k+1]),
-                                         nrow=lengths[k+1],
-                                         ncol=lengths[k]))
+      .biases <- numeric()
+      .biases <- lapply(.lengths, rnorm)
+      model$biases <- .biases
 
-      model$biases <- lapply(1:(length(model$nodes)-1),
-                              function(k)
-                                  matrix(rnorm(lengths[k+1]),
-                                         nrow=lengths[k+1]))
+      # .weights <- 
+       ## <- mapply(matrix,
+       ##                   ncol=1,
+       ##                   nrow=.lengths,
+       ##                   data=lapply(.lengths,rnorm))
+
+      ## TODO: this needs to be converted to mapply or the function needs to be
+      ## fixed, rn it errors
+      .weights <- lapply(1:(length(model$nodes)-1),
+			 function(k)
+			     matrix(rnorm(lengths[k+1]*lengths[k])),
+			 nrow=lengths[],
+			 ncol=lengths[]
+			 )
+
+      model$weights <- .weights
+
+      ## model$biases <- lapply(1:(length(model$nodes)-1),
+      ##                        function(k)
+      ##                            matrix(rnorm(lengths[k+1]),
+      ##                                   nrow=lengths[k+1]))
 
       model$input <- if(length(input))
-                         as.matrix(input)
-                     else
-                         .nodes[[1]]
+			 as.matrix(input)
+		     else
+			 .nodes[[1]]
 
       model$nodes[[1]] <- model$input
 
-      model$get_layer <- function(k, .model=model) { ## 1 -> k=nlayers->output=nodes[[n]]
-          ret <- list()
-          class(ret) <- "layer"
-          ret$nodes  <- .model$nodes[k]
-          ret$weights<- ifelse(k==1, 0, .model$weights[k-1])
-          ret$biases <- ifelse(k==1, 0, .model$biases[k-1])        
-          return(ret)
+      ## model$get_layer <- function(k) { ## 1 -> k=nlayers->output=nodes[[n]]
+      ##     ret <- list()
+      ##     class(ret) <- "layer"
+      ##     ret$nodes  <- model$nodes[k]
+      ##     ret$weights<- ifelse(k==1, 0, model$weights[k-1])
+      ##     ret$biases <- ifelse(k==1, 0, model$biases[k-1])        
+      ##     return(ret)
+      ## }
+      layers <- list()
+      update_layers <- function() {
+	  layers <- list()
+	  layers[[1]] <- list(Nodes=model$nodes[[1]],
+			      Weights=model$weights[[1]],
+			      Biases=model$biases[[1]])
+	  for(i in 2:(model$nlayers-1)) {
+	      layers[[i]] <- list(Weights=model$weights[[i]],
+				  Biases=model$biases[[i]],
+				  Nodes=model$nodes[[i+1]])
+	  }            
+	  model$layers <- layers
+	  return(layers)
       }
 
+      ## IMPORTANT: we need to profile this and the update function, think about
+      ## how best to implement this/model$layers so that it stays updated, 
+      model$get_layer <- function(k) {
+	  update_layers()
+	  if(k!=1)
+	      return(layers[k-1])
+	  else
+	      return(list(Weights=0,
+			  Biases=0,
+			  Nodes=model$nodes[[k]]))
+      }
+
+
+      model$predict <- function(input) {        
+	  forwardstep <- function(k) {
+	      if(k==model$nlayers)
+		  return(model$weights[[k]])
+	      return(model$weights[[k]]%*%model$nodes[[k]]+model$biases[[k]]) ## W1.N1+B1, 
+	  }        
+	  model$nodes[[2]] <- forwardstep(1)
+	  model$nodes[[3]] <- forwardstep(2)        
+	  return(0)            
+      }
+
+      model$train <- function(train.df, train.labels) {
+
+      }
+
+      ## 
+      feedforward <- function(input) {
+	  output <- list()
+	  return(output)
+      }
+
+      stopifnot(length(model$weights)==(model$nlayers-1))
       return(model)
   }
 
   activate <- function(node) {
       return(lapply(node,
-                    function(k)
-                        exp(k)/(1+exp(k))))
+		    function(k)
+			exp(k)/(1+exp(k))))
   }
-                       
+
+  model.genstd <- function()
+      return(model.gen.annc(2,2,1, input=rbinom(n=2, size=1, prob=0.5)))
+
+
   forwardstep <- function(model, k) {
       if(k==2)
-          model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
+	  model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
       else
-          model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$nodes[[k-1]])
+	  model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$nodes[[k-1]])
       return(model)
   }
 
@@ -225,7 +279,7 @@
 
 
   ## basic layout, 4 layers of 5x1
-  model <- model.gen.annc(2,2,1, input=rbinom(n=2, size=1, prob=0.5))
+  model <- genstd()
   names(model)
   print(model$get_layer(1))
 #+END_SRC
@@ -234,13 +288,13 @@
 #+begin_example
 [1] "Number of Layers: 3"
 [1] "Layer Lengths: 2, 2, 1"
+Error in lengths[] : object of type 'closure' is not subsettable
 [1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
 [7] "get_layer"
 $nodes
 $nodes[[1]]
      [,1]
 [1,]    0
-[2,]    1
 
 
 $weights
@@ -252,10 +306,6 @@ $biases
 attr(,"class")
 [1] "layer"
 #+end_example
-
-
-#+RESULTS:
-: TRUE
 
 * Analysis
 #+BEGIN_SRC R
@@ -274,3 +324,5 @@ attr(,"class")
 - https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf
 - https://en.wikipedia.org/wiki/Perceptron
 - https://cran.r-project.org/web/packages/sigmoid/sigmoid.pdf
+*** backprop
+    https://github.com/mnielsen/neural-networks-and-deep-learning/blob/master/src/network.py
