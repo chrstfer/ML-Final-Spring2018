@@ -143,16 +143,16 @@
   ## }
 
   model.gen.annc <- function(length.input,
-			     length.hidden,
-			     length.output,
-			     out.classes=as.factor(1:length.output),
-			     input=NULL) {    
+                             length.hidden,
+                             length.output,
+                             out.classes=as.factor(1:length.output),
+                             input=NULL) {    
       model <- list()
       class(model) <- "model.ann.classifier"
 
       lengths <- c(length.input,
-		   length.hidden,
-		   length.output)
+                   length.hidden,
+                   length.output)
       ## print(lengths)
       n.layers <- length(lengths)
 
@@ -166,52 +166,61 @@
       model$lengths <- lengths
 
       .nodes <- lapply(1:n.layers,
-		       function(n)
-			   matrix(0,
-				  nrow=lengths[n],
-				  ncol=1))    
+                       function(n)
+                           matrix(0,
+                                  nrow=lengths[n],
+                                  ncol=1))    
       model$nodes <- .nodes
 
       model$weights <- lapply(1:(length(model$nodes)-1),
-			      function(k)
-				  matrix(rnorm(lengths[k+1]),
-					 nrow=lengths[k+1],
-					 ncol=lengths[k]))
+                              function(k)
+                                  matrix(rnorm(lengths[k+1]),
+                                         nrow=lengths[k+1],
+                                         ncol=lengths[k]))
 
       model$biases <- lapply(1:(length(model$nodes)-1),
-			      function(k)
-				  matrix(rnorm(lengths[k+1]),
-					 nrow=lengths[k+1]))
+                              function(k)
+                                  matrix(rnorm(lengths[k+1]),
+                                         nrow=lengths[k+1]))
 
       model$input <- if(length(input))
-			 as.matrix(input)
-		     else
-			 .nodes[[1]]
+                         as.matrix(input)
+                     else
+                         .nodes[[1]]
 
       model$nodes[[1]] <- model$input
 
       model$get_layer <- function(k, .model=model) { ## 1 -> k=nlayers->output=nodes[[n]]
-	  ret <- list()
-	  class(ret) <- "layer"
-	  ret$nodes  <- .model$nodes[k]
-	  ret$weights<- ifelse(k==1, 0, .model$weights[k-1])
-	  ret$biases <- ifelse(k==1, 0, .model$biases[k-1])        
-	  return(ret)
+          ret <- list()
+          class(ret) <- "layer"
+          ret$nodes  <- .model$nodes[k]
+          ret$weights<- ifelse(k==1, 0, .model$weights[k-1])
+          ret$biases <- ifelse(k==1, 0, .model$biases[k-1])        
+          return(ret)
       }
 
       return(model)
   }
 
+  activate <- function(node) {
+      return(lapply(node,
+                    function(k)
+                        exp(k)/(1+exp(k))))
+  }
+                       
   forwardstep <- function(model, k) {
-      if(k==1)
-	  model$nodes[[k]] <- model$weights[[k-1]]%*%model$input
+      if(k==2)
+          model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
       else
-	  model$nodes[[k]] <- model$weights[[k-1]]%*%model$nodes[[k-1]]
+          model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$nodes[[k-1]])
       return(model)
   }
 
   predict.model.ann.classifier <- function(model, input) {
-
+      # Feed forward
+      forwardstep(model, 2:model$nlayers)
+      prediction <- activate(model$nodes[[nlayers]])
+      return(prediction)
   }
 
 
@@ -222,12 +231,27 @@
 #+END_SRC
 
 #+RESULTS:
-: [1] "Number of Layers: 3"
-: [1] "Layer Lengths: 2, 2, 1"
-: [1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
-: [7] "get_layer"
-: [1] "Number of Layers:  3"
-: [1] "Respective Lengths:  2, 2, 1"
+#+begin_example
+[1] "Number of Layers: 3"
+[1] "Layer Lengths: 2, 2, 1"
+[1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
+[7] "get_layer"
+$nodes
+$nodes[[1]]
+     [,1]
+[1,]    0
+[2,]    1
+
+
+$weights
+[1] 0
+
+$biases
+[1] 0
+
+attr(,"class")
+[1] "layer"
+#+end_example
 
 
 #+RESULTS:
