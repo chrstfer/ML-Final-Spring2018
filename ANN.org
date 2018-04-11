@@ -172,9 +172,9 @@ table(Labels=tr.df[,ncol(tr.df)])
       ## fixed, rn it errors
       .weights <- lapply(1:(length(model$nodes)-1),
 			 function(k) {
-			     matrix(rnorm(lengths[k+1]*lengths[k]),
-				    nrow=lengths[[k]],
-				    ncol=lengths[[k-1]])
+			     matrix(rnorm(.lengths[k+1]*.lengths[k]),
+				    nrow=.lengths[[k+1]],
+				    ncol=.lengths[[k]])
 			 })
 
       model$weights <- .weights
@@ -199,32 +199,33 @@ table(Labels=tr.df[,ncol(tr.df)])
       ##     ret$biases <- ifelse(k==1, 0, model$biases[k-1])        
       ##     return(ret)
       ## }
-      layers <- list()
-      update_layers <- function() {
-	  layers <- list()
-	  layers[[1]] <- list(Nodes=model$nodes[[1]],
-			      Weights=model$weights[[1]],
-			      Biases=model$biases[[1]])
-	  for(i in 2:(model$nlayers-1)) {
-	      layers[[i]] <- list(Weights=model$weights[[i]],
-				  Biases=model$biases[[i]],
-				  Nodes=model$nodes[[i+1]])
-	  }            
-	  model$layers <- layers
-	  return(layers)
-      }
+      ## layers <- list()
+      ## update_layers <- function() {
+      ##     layers <- list()
+      ##     layers[[1]] <- list(Nodes=model$nodes[[1]],
+      ##     		    Weights=model$weights[[1]],
+      ##     		    Biases=model$biases[[1]])
+      ##     for(i in 2:(model$nlayers-1)) {
+      ##         layers[[i]] <- list(Weights=model$weights[[i]],
+      ##     			Biases=model$biases[[i]],
+      ##     			Nodes=model$nodes[[i+1]])
+      ##     }            
+      ##     model$layers <- layers
+      ##     return(layers)
+      ## }
 
-      ## IMPORTANT: we need to profile this and the update function, think about
-      ## how best to implement this/model$layers so that it stays updated, 
-      model$get_layer <- function(k) {
-	  update_layers()
-	  if(k!=1)
-	      return(layers[k-1])
-	  else
-	      return(list(Weights=0,
-			  Biases=0,
-			  Nodes=model$nodes[[k]]))
-      }
+      ## ## IMPORTANT: we need to profile this and the update function, think about
+      ## ## how best to implement this/model$layers so that it stays updated, 
+      ## model$get_layer <- function(k) {
+      ##     update_layers()
+      ##     if(k!=1)
+      ##         return(layers)
+      ##     else
+      ##         return(list(Weights=0,
+      ##     		Biases=0,
+      ##     		Nodes=model$nodes[[k]]))
+      ## }
+
 
 
       model$predict <- function(input) {        
@@ -234,7 +235,8 @@ table(Labels=tr.df[,ncol(tr.df)])
 	      return(model$weights[[k]]%*%model$nodes[[k]]+model$biases[[k]]) ## W1.N1+B1, 
 	  }
 	  for(k in 2:model$nlayers) {
-	      model$layers[[k]] <- 
+	      model$layers[[k]] <- forwardstep(k)
+            
 	  }
 	  return(0)            
       }
