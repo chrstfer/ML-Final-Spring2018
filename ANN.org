@@ -1,3 +1,4 @@
+
 # -*- org-confirm-babel-evaluate: nil; -*-
 #+AUTHOR: Chris Carrigan Brolly
 #+TITLE: Artificial Neural Nets 
@@ -278,10 +279,9 @@ table(Labels=tr.df[,ncol(tr.df)])
 #+RESULTS:
 : [1] "Number of Layers: 3"
 : [1] "Layer Lengths: 2, 2, 1"
-: [1] "nlayers"   "lengths"   "nodes"     "weights"   "biases"    "input"    
-: [7] "get_layer"
-: [1] "Number of Layers:  3"
-: [1] "Respective Lengths:  2, 2, 1"
+: Error in lengths[] : object of type 'closure' is not subsettable
+: Error: object 'model' not found
+: Error in print(model$get_layer(1)) : object 'model' not found
 
 
 #+RESULTS:
