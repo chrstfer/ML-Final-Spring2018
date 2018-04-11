@@ -163,19 +163,19 @@ table(Labels=tr.df[,ncol(tr.df)])
       model$biases <- .biases
 
       # .weights <- 
-       ## <- mapply(matrix,
-       ##                   ncol=1,
-       ##                   nrow=.lengths,
-       ##                   data=lapply(.lengths,rnorm))
+      ## <- mapply(matrix,
+      ##                   ncol=1,
+      ##                   nrow=.lengths,
+      ##                   data=lapply(.lengths,rnorm))
 
       ## TODO: this needs to be converted to mapply or the function needs to be
       ## fixed, rn it errors
       .weights <- lapply(1:(length(model$nodes)-1),
-			 function(k)
-			     matrix(rnorm(lengths[k+1]*lengths[k])),
-			 nrow=lengths[],
-			 ncol=lengths[]
-			 )
+			 function(k) {
+			     matrix(rnorm(lengths[k+1]*lengths[k]),
+				    nrow=lengths[[k]],
+				    ncol=lengths[[k-1]])
+			 })
 
       model$weights <- .weights
 
@@ -232,9 +232,10 @@ table(Labels=tr.df[,ncol(tr.df)])
 	      if(k==model$nlayers)
 		  return(model$weights[[k]])
 	      return(model$weights[[k]]%*%model$nodes[[k]]+model$biases[[k]]) ## W1.N1+B1, 
-	  }        
-	  model$nodes[[2]] <- forwardstep(1)
-	  model$nodes[[3]] <- forwardstep(2)        
+	  }
+	  for(k in 2:model$nlayers) {
+	      model$layers[[k]] <- 
+	  }
 	  return(0)            
       }
 
@@ -246,16 +247,10 @@ table(Labels=tr.df[,ncol(tr.df)])
       feedforward <- function(input) {
 	  output <- list()
 	  return(output)
-      }
+      }            
 
       stopifnot(length(model$weights)==(model$nlayers-1))
       return(model)
-  }
-
-  activate <- function(node) {
-      return(lapply(node,
-		    function(k)
-			exp(k)/(1+exp(k))))
   }
 
   model.genstd <- function()
@@ -263,10 +258,10 @@ table(Labels=tr.df[,ncol(tr.df)])
 
 
   forwardstep <- function(model, k) {
-      if(k==2)
+      if(k==1)
 	  model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
       else
-	  model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$nodes[[k-1]])
+	  model$nodes[[k]] <- activate(model$weights[[k]]%*%model$nodes[[k]])
       return(model)
   }
 
@@ -277,9 +272,8 @@ table(Labels=tr.df[,ncol(tr.df)])
       return(prediction)
   }
 
-
   ## basic layout, 4 layers of 5x1
-  model <- genstd()
+  model <- model.genstd()
   names(model)
   print(model$get_layer(1))
 #+END_SRC
