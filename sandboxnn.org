@@ -1,0 +1,364 @@
+# -*- org-confirm-babel-evaluate: nil; -*-
+#+AUTHOR: Matthew Sears
+#+TITLE: Artificial Neural Nets 
+#+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
+#+PROPERTY: header-args :session ANNsb
+
+Model parameters
+
+#+BEGIN_SRC R :exports both :results output
+  rm(list=ls())
+  set.seed(1)
+
+  activate <- function(node) { return(matrix(1/(1+exp(-node)))) }
+  sigprime <- function(node) { return(matrix(activate(node)*(1 - activate(node))))}
+
+  model <- list()
+  truth <- 1
+  learningrate <- 0.25
+  errs <- c()
+
+  .lengths <- c(2,2,1) # I,H,O
+
+  model$input <- c(1,0)
+
+  .nlayers <- length(.lengths)
+
+  model$nodes <- mapply(matrix,
+                        data=1,
+                        ncol=1,
+                        nrow=.lengths)
+
+  model$weights <-  lapply(1:(.nlayers-1),
+                           function(k) {
+                               matrix(rnorm(.lengths[k+1]*.lengths[k]),
+                                      nrow=.lengths[k+1],
+                                      ncol=.lengths[k])
+                           })
+
+  .b <- numeric()
+  .b <- lapply(.lengths[-1], rnorm)
+  model$biases <- mapply(matrix,
+                         data=.b,
+                         ncol=1,
+                         nrow=.lengths[-1])
+
+  ## ???
+  ## model$nodes[-1] <- lapply(1:(.nlayers-1),
+  ##                           function(k) {
+  ##                               activate(model$weights[[k]]%*%model$nodes[[k]]
+  ##                                        + model$biases[[k]])
+  ##                           })
+
+
+  for(i in 1:250) {
+      
+                              # Feed Forward
+
+      model$nodes[[1]] <- matrix(model$input)
+
+      model$active[[1]] <- activate(model$nodes[[1]])
+
+      model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]]
+                          +model$biases[[1]]
+
+      model$active[[2]] <- activate(model$nodes[[2]])
+
+      model$nodes[[3]] <- model$weights[[2]]%*%model$active[[1]]
+                          +model$biases[[2]]
+
+      model$active[[3]] <- activate(model$nodes[[3]])
+
+      
+                              # Backprop
+      
+      #cat("PREDICTION:", model$active[[3]], "\n")
+      #cat("ERROR:", model$active[[3]]-truth, "\n")
+      errs[i] <- model$active[[3]] - truth
+
+      del <- list()
+
+      del[[2]] <- (model$active[[3]] - truth) * sigprime(model$nodes[[3]])
+      
+      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
+      
+
+                              # Update
+      
+      w2 <- model$weights[[2]] - learningrate*( del[[2]]%*%t(model$active[[2]]) )
+      
+      w1 <- model$weights[[1]] - learningrate*( del[[1]]%*%t(model$active[[1]]) )
+      
+      model$weights[[2]] <- w2
+      
+      model$weights[[1]] <- w1
+      
+
+      b2 <- model$biases[[2]] - learningrate*del[[2]]
+      
+      b1 <- model$biases[[1]] - learningrate*del[[1]]
+      
+      model$biases[[2]] <- b2
+      
+      model$biases[[1]] <- b1
+      
+  }
+
+
+
+  # ~~~ Junk that might be useful
+
+  ## # save node vectors without activation for backprop
+  ## .nodes <- lapply(1:(.nlayers-1),
+  ##                   function(k) {
+  ##                       model$weights[[k]]%*%model$nodes[[k]]
+  ##                       + model$biases[[k]]
+  ##                   })
+
+  ## yhat <- activate(model$nodes[[.nlayers]])
+
+  ## ## Backprop
+  ## err <- yhat - truth
+  ## err
+
+  ## # For every activated output node in err vector, apply element-wise
+  ## # multiplication to derivative of activation function of output
+  ## # node. This is the "gradient" at the output layer.
+  ## nabla <- function(err, layer){
+  ##     return(matrix(err*sigprime(.nodes[[layer-1]])))
+  ## }
+
+  ## dely <- nabla(err=err,3)
+  ## dely
+
+
+  ## delcdelw2 <- model$nodes[[3]]%*%dely
+  ## model$weights[[2]] <- model$weights[[2]] + t(matrix(learningrate*delcdelw2))
+  ## model$biases[[2]] <- model$biases[[2]] + learningrate*dely
+
+
+  ## delw2 <- nabla(err=t(model$weights[[2]])%*%dely, 2)
+  ## delw2
+
+  ## delcdelw1 <- model$nodes[[1]]%*%delw2
+  ## model$weights[[1]] <- model$weights[[1]] + t(matrix(learningrate*delcdelw1))
+  ## model$biases[[1]] <- model$biases[[1]] + learningrate*delw2
+
+
+  ## model$biases[[2]] <- model$biases[[2]] + delw2
+
+
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+ PREDICTION: 0.4577647 
+ERROR: -0.5422353 
+PREDICTION: 0.46256 
+ERROR: -0.53744 
+PREDICTION: 0.4673256 
+ERROR: -0.5326744 
+PREDICTION: 0.4720599 
+ERROR: -0.5279401 
+PREDICTION: 0.4767616 
+ERROR: -0.5232384 
+PREDICTION: 0.481429 
+ERROR: -0.518571 
+PREDICTION: 0.4860609 
+ERROR: -0.5139391 
+PREDICTION: 0.490656 
+ERROR: -0.509344 
+PREDICTION: 0.4952132 
+ERROR: -0.5047868 
+PREDICTION: 0.4997313 
+ERROR: -0.5002687 
+PREDICTION: 0.5042094 
+ERROR: -0.4957906 
+PREDICTION: 0.5086465 
+ERROR: -0.4913535 
+PREDICTION: 0.5130417 
+ERROR: -0.4869583 
+PREDICTION: 0.5173943 
+ERROR: -0.4826057 
+PREDICTION: 0.5217036 
+ERROR: -0.4782964 
+PREDICTION: 0.525969 
+ERROR: -0.474031 
+PREDICTION: 0.5301899 
+ERROR: -0.4698101 
+PREDICTION: 0.5343658 
+ERROR: -0.4656342 
+PREDICTION: 0.5384962 
+ERROR: -0.4615038 
+PREDICTION: 0.542581 
+ERROR: -0.457419 
+PREDICTION: 0.5466197 
+ERROR: -0.4533803 
+PREDICTION: 0.5506121 
+ERROR: -0.4493879 
+PREDICTION: 0.554558 
+ERROR: -0.445442 
+PREDICTION: 0.5584573 
+ERROR: -0.4415427 
+PREDICTION: 0.56231 
+ERROR: -0.43769 
+PREDICTION: 0.566116 
+ERROR: -0.433884 
+PREDICTION: 0.5698754 
+ERROR: -0.4301246 
+PREDICTION: 0.5735881 
+ERROR: -0.4264119 
+PREDICTION: 0.5772544 
+ERROR: -0.4227456 
+PREDICTION: 0.5808743 
+ERROR: -0.4191257 
+PREDICTION: 0.5844481 
+ERROR: -0.4155519 
+PREDICTION: 0.5879759 
+ERROR: -0.4120241 
+PREDICTION: 0.5914579 
+ERROR: -0.4085421 
+PREDICTION: 0.5948946 
+ERROR: -0.4051054 
+PREDICTION: 0.5982861 
+ERROR: -0.4017139 
+PREDICTION: 0.6016329 
+ERROR: -0.3983671 
+PREDICTION: 0.6049352 
+ERROR: -0.3950648 
+PREDICTION: 0.6081934 
+ERROR: -0.3918066 
+PREDICTION: 0.6114079 
+ERROR: -0.3885921 
+PREDICTION: 0.6145791 
+ERROR: -0.3854209 
+PREDICTION: 0.6177075 
+ERROR: -0.3822925 
+PREDICTION: 0.6207934 
+ERROR: -0.3792066 
+PREDICTION: 0.6238374 
+ERROR: -0.3761626 
+PREDICTION: 0.6268399 
+ERROR: -0.3731601 
+PREDICTION: 0.6298014 
+ERROR: -0.3701986 
+PREDICTION: 0.6327223 
+ERROR: -0.3672777 
+PREDICTION: 0.6356032 
+ERROR: -0.3643968 
+PREDICTION: 0.6384445 
+ERROR: -0.3615555 
+PREDICTION: 0.6412467 
+ERROR: -0.3587533 
+PREDICTION: 0.6440104 
+ERROR: -0.3559896 
+PREDICTION: 0.6467361 
+ERROR: -0.3532639 
+PREDICTION: 0.6494242 
+ERROR: -0.3505758 
+PREDICTION: 0.6520753 
+ERROR: -0.3479247 
+PREDICTION: 0.6546899 
+ERROR: -0.3453101 
+PREDICTION: 0.6572685 
+ERROR: -0.3427315 
+PREDICTION: 0.6598117 
+ERROR: -0.3401883 
+PREDICTION: 0.6623199 
+ERROR: -0.3376801 
+PREDICTION: 0.6647937 
+ERROR: -0.3352063 
+PREDICTION: 0.6672335 
+ERROR: -0.3327665 
+PREDICTION: 0.6696399 
+ERROR: -0.3303601 
+PREDICTION: 0.6720135 
+ERROR: -0.3279865 
+PREDICTION: 0.6743545 
+ERROR: -0.3256455 
+PREDICTION: 0.6766637 
+ERROR: -0.3233363 
+PREDICTION: 0.6789415 
+ERROR: -0.3210585 
+PREDICTION: 0.6811883 
+ERROR: -0.3188117 
+PREDICTION: 0.6834047 
+ERROR: -0.3165953 
+PREDICTION: 0.6855912 
+ERROR: -0.3144088 
+PREDICTION: 0.6877481 
+ERROR: -0.3122519 
+PREDICTION: 0.6898761 
+ERROR: -0.3101239 
+PREDICTION: 0.6919755 
+ERROR: -0.3080245 
+PREDICTION: 0.6940468 
+ERROR: -0.3059532 
+PREDICTION: 0.6960905 
+ERROR: -0.3039095 
+PREDICTION: 0.698107 
+ERROR: -0.301893 
+PREDICTION: 0.7000967 
+ERROR: -0.2999033 
+PREDICTION: 0.7020602 
+ERROR: -0.2979398 
+PREDICTION: 0.7039977 
+ERROR: -0.2960023 
+PREDICTION: 0.7059099 
+ERROR: -0.2940901 
+PREDICTION: 0.7077969 
+ERROR: -0.2922031 
+PREDICTION: 0.7096594 
+ERROR: -0.2903406 
+PREDICTION: 0.7114977 
+ERROR: -0.2885023 
+PREDICTION: 0.7133121 
+ERROR: -0.2866879 
+PREDICTION: 0.7151031 
+ERROR: -0.2848969 
+PREDICTION: 0.7168711 
+ERROR: -0.2831289 
+PREDICTION: 0.7186164 
+ERROR: -0.2813836 
+PREDICTION: 0.7203394 
+ERROR: -0.2796606 
+PREDICTION: 0.7220405 
+ERROR: -0.2779595 
+PREDICTION: 0.7237201 
+ERROR: -0.2762799 
+PREDICTION: 0.7253785 
+ERROR: -0.2746215 
+PREDICTION: 0.727016 
+ERROR: -0.272984 
+PREDICTION: 0.728633 
+ERROR: -0.271367 
+PREDICTION: 0.7302299 
+ERROR: -0.2697701 
+PREDICTION: 0.7318069 
+ERROR: -0.2681931 
+PREDICTION: 0.7333644 
+ERROR: -0.2666356 
+PREDICTION: 0.7349028 
+ERROR: -0.2650972 
+PREDICTION: 0.7364222 
+ERROR: -0.2635778 
+PREDICTION: 0.7379231 
+ERROR: -0.2620769 
+PREDICTION: 0.7394058 
+ERROR: -0.2605942 
+PREDICTION: 0.7408705 
+ERROR: -0.2591295 
+PREDICTION: 0.7423176 
+ERROR: -0.2576824 
+PREDICTION: 0.7437472 
+ERROR: -0.2562528
+#+end_example
+
+#+BEGIN_SRC R :results graphics :exports output :file plot.png
+plot(abs(errs))
+#+END_SRC
+
+#+RESULTS:
+[[file:plot.png]]
+
