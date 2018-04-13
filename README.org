@@ -4,51 +4,41 @@
 #+PROPERTY: 
 
 
-* ML-Final-Spring2018
+* Introduction
 Machine Learning Final Project -- Spring 2018 at Wentworth Institute of Technology
-
-** TODO 
-
-- Make in-line images show up
-  file:http://neuralnetworksanddeeplearning.com/images/mnist_100_digits.png
-
-- Fix up $\LaTeX$
-
 
 ** MNIST
 
-We will use the MNIST hand-written digits dataset, as it's the
-canonical dataset for state-of-the-art machine learning algorithms
-simply because of how clean and well-crafted it is.
+We will use the MNIST hand-written digits dataset, as it's the canonical dataset
+for state-of-the-art machine learning algorithms simply because of how clean and
+well-crafted it is.
 
-Here's an example of the matrix representation of a 28x28 pixel image
-of a hand-written digit: 
+Here's an example of the matrix representation of a 28x28 pixel image of a
+hand-written digit:
 
 file:https://www.tensorflow.org/versions/r1.1/images/MNIST-Matrix.png
 
 
 ** Procedure
-We convert these matrices into column vectors in =R=, where each row
-represents an individual pixel. This turns into our input layer for
-our neural network where each input node, or sigmoid neuron, is a
-pixel.
+We convert these matrices into column vectors in =R=, where each row represents
+an individual pixel. This turns into our input layer for our neural network
+where each input node, or sigmoid neuron, is a pixel.
 
 file:https://ml4a.github.io/images/figures/mnist_2layers.png
 
 The hidden layer is one of the main reasons why neural networks are
-successful. It essentially provides an additional layer of abstraction
-(no pun intended).
+successful. It essentially provides an additional layer of abstraction (no pun
+intended).
 
-There are 10 digits in total, which means we have 10 classes for our
-model, and subsequently 10 output neurons in our output layer.
+There are 10 digits in total, which means we have 10 classes for our model, and
+subsequently 10 output neurons in our output layer.
 
 _Activation Function:_
 
-This is what allows us to cook with gas -- an activation function
-involves the introduction of a non-linearity. It is often viewed
-analagous to the rate of action potential firing in the brain, and
-basically turns our previously linear classifiers into more flexible
-perceptrons called neurons.
+This is what allows us to cook with gas -- an activation function involves the
+introduction of a non-linearity. It is often viewed analagous to the rate of
+action potential firing in the brain, and basically turns our previously linear
+classifiers into more flexible perceptrons called neurons.
 
 We used the sigmoid function:
 \[ 

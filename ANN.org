@@ -4,6 +4,145 @@
 #+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
 #+PROPERTY: header-args :session ANNimpl
 
+* Introduction
+Machine Learning Final Project -- Spring 2018 at Wentworth Institute of Technology
+
+** MNIST
+
+We will use the MNIST hand-written digits dataset, as it's the canonical dataset
+for state-of-the-art machine learning algorithms simply because of how clean and
+well-crafted it is.
+
+Here's an example of the matrix representation of a 28x28 pixel image of a
+hand-written digit:
+
+file:https://www.tensorflow.org/versions/r1.1/images/MNIST-Matrix.png
+
+
+** Procedure
+We convert these matrices into column vectors in =R=, where each row represents
+an individual pixel. This turns into our input layer for our neural network
+where each input node, or sigmoid neuron, is a pixel.
+
+file:https://ml4a.github.io/images/figures/mnist_2layers.png
+
+The hidden layer is one of the main reasons why neural networks are
+successful. It essentially provides an additional layer of abstraction (no pun
+intended).
+
+There are 10 digits in total, which means we have 10 classes for our model, and
+subsequently 10 output neurons in our output layer.
+
+_Activation Function:_
+
+This is what allows us to cook with gas -- an activation function involves the
+introduction of a non-linearity. It is often viewed analagous to the rate of
+action potential firing in the brain, and basically turns our previously linear
+classifiers into more flexible perceptrons called neurons.
+
+We used the sigmoid function:
+\[ 
+\sigma(z) = \frac{1}{1 + e^{-z}}
+\]
+
+where, for example with a single hidden neuron $z$,
+
+$$z = {\bf w} \cdot x + b$$
+
+The first part of that sum is the dot product of the total input going
+into the neuron, i.e., the total/net weighted inputs. The second part
+is the bias associated with the neuron, which is basically analogous
+to how hard/easy it is for that neuron to fire.
+
+Useful properties of the sigmoid function:
+
+- "Squashes" any input into the range $[0,1]$ 
+- Easy to use when training our model with backpropagation
+  + $\sigma^\prime(z) = \sigma(z) (1-\sigma(z))$
+
+
+\[
+\lim_{z \to -\infty} \frac{1}{1 + e^{-z}} = 0 \\
+\lim_{z \to \infty}  \frac{1}{1 + e^{-z}} = \frac{1}{2} \\
+\lim_{z \to 0}       \frac{1}{1 + e^{-z}} = 1 \\
+\]
+
+*** Backpropagation Algorithm
+
+Without backpropagation, the model would never learn. Learning in this
+case means having the model tune its weights and biases such that the
+error is minimized through the cost function it's given.
+
+**** _Cost Function:_ 
+
+$$C(w,b) = \frac{1}{2} \left| y - \hat{y} \right| ^2$$
+
+Our parameters are weights and biases, and we define our cost function
+as something convex to guarantee a global minimum during gradient
+descent.
+
+Backpropagation requires multivariable calculus, which I go into
+detail in a write-up [[https://matthewsears.github.io/img/main.pdf][here]] in the context of an XOR gate. In short,
+backpropagation is a clever way of using the chain rule to update the
+weights and biases.
+
+For our algorithm we only need to focus on these equations:
+file:http://neuralnetworksanddeeplearning.com/images/tikz21.png
+
+**** _Feed-Forward:_
+
+Before backpropogation we run the first feed-forward iteration, which
+is just running the network start to finish on the randomly
+initialized weights and biases and comparing its junk output to the
+desired output.
+
+We focus on layers $l = 2, \ldots, L$ to feed the activated input
+forward through the network.
+
+For our output layer, $L = 3$, and our single hidden layer is $l = L -
+1 = 2$.
+
+**** _Back-Prop_
+
+The gradient evaluated at the activated output layer, $3$:
+$$\delta^3 = \nabla_a C \odot \sigma'(z^3)$$
+
+where $z^3$ is the unactivated node vector in the output layer
+***** TODO : talk about $\odot$ and a=sig(z)
+
+Backpropagating the errors into the hidden layer:
+$$\delta^2 = ((w^{3})^T \delta^{3}) \odot \sigma'(z^2)$$
+
+where $w^3$ is the weight matrix that influences the output layer.
+
+Our output is then the gradient of the cost function, which we defined
+as all the individual tunings we apply to the weights and biases after
+every backprop step.
+
+$$\nabla C = \alpha \left< \frac{\partial C}{\partial w^l} := a^{l-1}
+\delta^l, \frac{\partial C}{\partial b^l} := \delta^l \right>$$
+
+for all $l = 2, \ldots, L$ weight/bias matrices, where $\alpha \in
+(0,1)$ is the learning rate, or how fast it tries to approach the
+minimum with every backprop step.
+
+***** TODO : high-level explanatory comments
+
+**** _Update_
+
+We then proceed to update the weights and biases based on the
+gradient, subtracting from the previous iteration's values since it's
+descent.
+
+\[
+w^3 -= \alpha \left(\delta^3(a^2)^T \right) \\
+w^2 -= \alpha \left(\delta^2(a^1)^T \right) \\
+b^3 -= \alpha \left(\delta^3 \right) \\
+b^2 -= \alpha \left(\delta^2 \right) \\
+\]
+
+** Reference
+http://neuralnetworksanddeeplearning.com/
 * Code
 ** Setup
 *** R Setup  
