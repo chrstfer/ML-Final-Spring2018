@@ -4,16 +4,16 @@
 #+PROPERTY: 
 
 
-* Introduction
+* ML-Final-Spring2018
 Machine Learning Final Project -- Spring 2018 at Wentworth Institute of Technology
 
 ** TODO 
 
 - Make in-line images show up
-
   file:http://neuralnetworksanddeeplearning.com/images/mnist_100_digits.png
 
 - Fix up $\LaTeX$
+
 
 ** MNIST
 
@@ -64,7 +64,6 @@ into the neuron, i.e., the total/net weighted inputs. The second part
 is the bias associated with the neuron, which is basically analogous
 to how hard/easy it is for that neuron to fire.
 
-**** TODO : big/small and  +/- weights/biases correspond to? 
 Useful properties of the sigmoid function:
 
 - "Squashes" any input into the range $[0,1]$ 

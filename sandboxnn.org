@@ -102,38 +102,42 @@ table(Labels=tr.df[,ncol(tr.df)])
   #rm(list=ls())
   set.seed(1)
 
-  activate <- function(node) { return(matrix(1/(1+exp(-node)))) }
-  sigprime <- function(node) { return(matrix(activate(node)*(1 - activate(node))))}
+  activate <- function(node) {
+      return(matrix(1/(1+exp(-node))))
+  }
+  sigprime <- function(node) {
+      return(matrix(activate(node)*(1 - activate(node))))
+  }
 
   model <- list()
   truth <- 1
   learningrate <- 0.25
   errs <- c()
 
-  .lengths <- c(2,2,1) # I,H,O
+  .lengths <- c(2,2,1) #I,H,O
 
   model$input <- c(1,0)
 
   .nlayers <- length(.lengths)
 
   model$nodes <- mapply(matrix,
-                        data=1,
-                        ncol=1,
-                        nrow=.lengths)
+			data=1,
+			ncol=1,
+			nrow=.lengths)
 
   model$weights <-  lapply(1:(.nlayers-1),
-                           function(k) {
-                               matrix(rnorm(.lengths[k+1]*.lengths[k]),
-                                      nrow=.lengths[k+1],
-                                      ncol=.lengths[k])
-                           })
+			   function(k) {
+			       matrix(rnorm(.lengths[k+1]*.lengths[k]),
+				      nrow=.lengths[k+1],
+				      ncol=.lengths[k])
+			   })
 
   .b <- numeric()
   .b <- lapply(.lengths[-1], rnorm)
   model$biases <- mapply(matrix,
-                         data=.b,
-                         ncol=1,
-                         nrow=.lengths[-1])
+			 data=.b,
+			 ncol=1,
+			 nrow=.lengths[-1])
 
   ## ???
   ## model$nodes[-1] <- lapply(1:(.nlayers-1),
@@ -143,27 +147,19 @@ table(Labels=tr.df[,ncol(tr.df)])
   ##                           })
 
 
-  for(i in 1:250) {
-      
-                              # Feed Forward
-
+  for(i in 1:256) {
+			      # Feed Forward
       model$nodes[[1]] <- matrix(model$input)
-
       model$active[[1]] <- activate(model$nodes[[1]])
-
       model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]]
-                          +model$biases[[1]]
-
+			  +model$biases[[1]]
       model$active[[2]] <- activate(model$nodes[[2]])
-
-      model$nodes[[3]] <- model$weights[[2]]%*%model$active[[1]]
-                          +model$biases[[2]]
-
+      model$nodes[[3]] <- model$weights[[2]]%*%model$active[[1]]+model$biases[[2]]
       model$active[[3]] <- activate(model$nodes[[3]])
 
-      
-                              # Backprop
-      
+
+					  # Backprop
+
       #cat("PREDICTION:", model$active[[3]], "\n")
       #cat("ERROR:", model$active[[3]]-truth, "\n")
       errs[i] <- model$active[[3]] - truth
@@ -171,29 +167,24 @@ table(Labels=tr.df[,ncol(tr.df)])
       del <- list()
 
       del[[2]] <- (model$active[[3]] - truth) * sigprime(model$nodes[[3]])
-      
-      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
-      
 
-                              # Update
-      
-      w2 <- model$weights[[2]] - learningrate*( del[[2]]%*%t(model$active[[2]]) )
-      
-      w1 <- model$weights[[1]] - learningrate*( del[[1]]%*%t(model$active[[1]]) )
-      
+      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
+
+
+			      # Update
+
+      w2 <- model$weights[[2]] - learningrate * (del[[2]]%*%t(model$active[[2]]))
+      w1 <- model$weights[[1]] - learningrate * (del[[1]]%*%t(model$active[[1]]))
+
       model$weights[[2]] <- w2
-      
       model$weights[[1]] <- w1
-      
+
 
       b2 <- model$biases[[2]] - learningrate*del[[2]]
-      
       b1 <- model$biases[[1]] - learningrate*del[[1]]
-      
       model$biases[[2]] <- b2
-      
       model$biases[[1]] <- b1
-      
+
   }
 
 
