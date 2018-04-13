@@ -1,4 +1,3 @@
-
 # -*- org-confirm-babel-evaluate: nil; -*-
 #+AUTHOR: Chris Carrigan Brolly
 #+TITLE: Artificial Neural Nets 
@@ -53,16 +52,18 @@
 *** Data (import)
 #+BEGIN_SRC R :results output graphics :file imgs/setup/ex1.png
   ## Works
-  tr.labels <- as.vector(getLabels(gzfile("datasets/training/labels", "rb"), nget=256))
-  tr.images <- getImages(gzfile("datasets/training/images", # data's filename
+  trnum <- 2048
+  tsnum <- 512
+  dsetnum <- trnum+tsnum
+  in.labels <- as.vector(getLabels(gzfile("datasets/training/labels", "rb"), nget=dsetnum))
+  in.images <- getImages(gzfile("datasets/training/images", # data's filename
 				"rb"), # read it as binary
 			 ## Get 256 of the entries
-			 nget=256, progress=TRUE)
-  tr.im.matrix <- do.call("rbind", # create rows out of the input data
-			  lapply(tr.images, as.vector)) # transform each image
-							# matrix into a vector
+			 nget=dsetnum, progress=TRUE)
 
-  tr.df <- cbind(as.factor(tr.labels), tr.im.matrix) # now create a data frame
+  ts.idx <- sample(dsetnum, 0.15*dsetnum)
+
+  in.df <- cbind(Labels=in.labels, Img=do.call("rbind", lapply(in.images, as.vector)))
 
   oldpar <- par(mar=rep(0,4))
   image(tr.images[[8]], useRaster=TRUE, col=seq(2^8)) 
@@ -74,23 +75,23 @@
 
 - Label Frequency ::
 #+BEGIN_SRC R :results table drawer :colnames yes :exports results
-table(Labels=tr.df[,ncol(tr.df)])
+table(Labels=tr.labels)
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
 | Labels | Freq |
 |--------+------|
-|      0 |   30 |
-|      1 |   35 |
-|      2 |   25 |
-|      3 |   30 |
-|      4 |   24 |
-|      5 |   17 |
-|      6 |   24 |
-|      7 |   26 |
-|      8 |   19 |
-|      9 |   26 |
+|      0 |  100 |
+|      1 |  120 |
+|      2 |  101 |
+|      3 |   95 |
+|      4 |  108 |
+|      5 |   92 |
+|      6 |   95 |
+|      7 |  122 |
+|      8 |   90 |
+|      9 |  101 |
 :END:
 
 *** Data (Links)
@@ -102,7 +103,6 @@ table(Labels=tr.df[,ncol(tr.df)])
   | test set images     |  1648877 | http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz  |
   | test set labels     |     4542 | http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz  |
   |---------------------+----------+-------------------------------------------------------------|
-
 
 * Implementation: Multilayer Perceptron with Backprop
 - Features ::
@@ -117,143 +117,181 @@ table(Labels=tr.df[,ncol(tr.df)])
   - print functions :: layer, model
   - plot functions :: model, inputs, outputs (eg plot the input rows of tr.df,
                       and output of predict
+** Model
+#+BEGIN_SRC R
+  ann <- function(node_lengths,
+		  dlist, lbls,
+		  tr.idx=0, ts.idx=0,
+		  learningrate) {
+      if(tr.idx==0 || ts.idx==0) {
+	  tr.d <- dlist
+	  tr.l <- lbls
+	  do.test <- FALSE
+      } else {        
+	  tr.d <- dlist[tr.idx]
+	  tr.l <- lbls[tr.idx]
+	  ts.d <-  dlist[ts.idx]
+	  ts.l <-  lbls[ts.idx]
+	  do.test <- TRUE
+      }
 
-** Model Class
-#+BEGIN_SRC R :exports both :results output
-  summary.model.ann.classifier <- function(model) {
-      print(paste("Number of Layers: ", model$nlayers))
-      print(paste("Respective Lengths: ", toString(model$lengths)))
-  }
+      model <- new.env()
+      model$lengths <- node_lengths
+      lengths <- model$lengths
+      model$nlayers <- length(model$lengths)
+      nlayers <- model$nlayers
 
-  summary.layers <- function(layers) {
-      lapply(lapply(X=layers, str),print)
-  }
+      normalize <- function(x){return(x/sum(x))}
+      activate <- function(node)
+	  return(matrix(1/(1+exp(-node))))
+      sigprime <- function(node)
+	  return(matrix(activate(node)*(1 - activate(node))))
 
-  model.gen.annc <- function(layers,
-			     training.data,
-			     training.labels,
-			     debug=TRUE) {    
-    
-      .lengths <- layers    
-      .nlayers <- length(.lengths)
+      model$debug <- TRUE
+      model$errs <- list()
+      model$biases <- mapply(matrix,
+			     data=lapply(lengths[-1], rnorm),
+			     ncol=1,
+			     nrow=lengths[-1])
+      model$weights <- lapply(1:(nlayers-1),
+			      function(k) {
+				  matrix(rnorm(lengths[k+1]*lengths[k]),
+					 nrow=lengths[k+1],
+					 ncol=lengths[k])})
 
+      ## semi-Pure function: references but does not modify its parent env
+      model$predict <- function(input) {
+	  active <- list()
+	  nodes <- list()
 
-      if(debug) print(paste("Number of Layers:", n.layers))
-      if(debug) print(paste("Layer Lengths:",    toString(.lengths)))
-    
-      model <- train(training.data, training.labels)
-      class(model) <- "model.ann.classifier"
-      return(model) 
-  }
+	  nodes[[1]] <- as.vector(input)
+	  active[[1]] <- activate(nodes[[1]])
 
-    
-  normalize <- function(x){return(x/sum(x))}
-  activate <- function(node)
-      return(matrix(1/(1+exp(-node))))
-  sigprime <- function(node)
-      return(matrix(activate(node)*(1 - activate(node))))
-
-  train <- function(data, labels) { # row-wise dataframe and list
-      errs <- list()
-      .active <- mapply(matrix,
-		       data=1,
-		       ncol=1,
-		       nrow=.lengths)
-      .nodes <- mapply(matrix,
-		       data=1,
-		       ncol=1,
-		       nrow=.lengths)
-      .biases <- mapply(matrix,
-			data=lapply(.lengths, rnorm),
-			ncol=1,
-			nrow=.lengths)
-      .weights <- lapply(1:(.nlayers-1),
-			 function(k) {
-			     matrix(rnorm(.lengths[k+1]*.lengths[k]),
-				    nrow=.lengths[k+1],
-				    ncol=.lengths[k])})    
-      for(n in 1:nrow(data)) {
-	  truth <- rep(0,10)
-	  truth[labels[n]+1] <- 1
-        
-	  .nodes[[1]] <- matrix(data[n,],ncol=1)
-	  .active[[1]] <- activate(.nodes[[1]])
-	  ## We could definitely get this faster. Each iteration only depends
-	  ## on the previous layer's active, if we could keep passing that
-	  ## down the chain
-	  ## .weights[[1]] %*% .active[[1]]
-
-	  for(i in 2:(.nlayers)) {
-	      print(i)	     
-	      .nodes[[i]] <- (.weights[[i-1]] %*% .active[[i-1]])  + .biases[[i-1]]
-	      .active[[i]] <- activate(.nodes[[i]])
+	  for(i in 2:nlayers) {
+	      nodes[[i]] <- (model$weights[[i-1]] %*% active[[i-1]]  + biases[[i-1]])
+	      active[[i]] <- activate(nodes[[i]])
 	  }
 
-	  if(debug)
-	      errs[[n]] <- (model$active[[.nlayers]] - truth)
+	  which.max(as.vector(active[[nlayers]]))-1
+      }
+
+      train <- function(input, label) {
+	  truth <- rep(0,10)
+	  truth[label+1] <- 1
+
+	  active <- list()
+	  nodes <- list()
+
+	  nodes[[1]] <- as.vector(input)
+	  active[[1]] <- activate(nodes[[1]])
+
+	  for(i in 2:nlayers) {
+	      nodes[[i]] <- (weights[[i-1]] %*% active[[i-1]]  + biases[[i-1]])
+	      active[[i]] <- activate(nodes[[i]])
+	  }
 
 	  del <- list()
-	  del[[(.nlayers-1)]] <- (.active[[.nlayers]] - truth) * sigprime(.nodes[[.nlayers]])
-	  ## Loop throught the rest
-	  for(i in seq((.nlayers-1),2,-1)) {
-	      del[[i-1]] <- (t(.weights[[i]]) %*% del[[i]]) * sigprime(.nodes[[i]])
+	  del[[(nlayers - 1)]] <-  (active[[nlayers]] - truth)* sigprime(nodes[[nlayers]])
+	  ## n-1, n-2, .. 3, 2
+	  for(i in seq((nlayers-1), 2, -1)) { 
+	      del[[i-1]] <- (t(weights[[i]]) %*% del[[i]]) * sigprime(nodes[[i]])
 	  }
 
-	  .weights <- lapply(length(.weights):1,
-			     function(i)
-				 return(.weights[[i]] - learningrate * del[[i]] %*% t(.active[[i]])))
-        
-	  .biases <- lapply(length(.weights):1, 
-			    function(i)
-				return(.biases[[i]] - learningrate * del[[i]]))
+	  model$weights <<- lapply(1:length(weights),
+				   function(i)
+				       return(weights[[i]] - learningrate * del[[i]] %*% t(active[[i]])))
+
+	  model$biases <<- lapply(1:length(biases),
+				  function(i)
+				      return(biases[[i]] - learningrate * del[[i]]))                    
       }
-      trained <- list()
-      trained$nodes <- .nodes
-      trained$weights <- .weights
-      trained$biases <- .biases
-
-      trained$nlayers <- n.layers
-      trained$lengths <- .lengths
-    
-      return(trained)
-  }
 
 
+      test <- function(inputs, labels) {        
+	  preds <- lapply(inputs,model$predict)
+	  preds==labels
+      }
 
-  ## basic layout, 4 layers of 5x1
-  set.seed(1)
+      ## Impure functions
+      environment(train) <- model ## MODIFIES ENV
+      environment(model$predict) <- model ## Does not modify env   
 
+      ## Do initialization
+      model$trained <- mapply(train, tr.d, tr.l)
+      if(do.test) {
+	  model$tested <- test(ts.d, ts.l)
+      }
 
+      return(model)
+  } 
+#+END_SRC
 
-  r1 <- predict(model, c(1,0))
+#+RESULTS:
 
-  r2 <- predict(model, c(1,1))
-  r3 <- predict(model, c(0,1))
-  r4 <- predict(model, c(0,0))
-
-  print("Results ::")
-  paste("Results 1: ",r1)
-  paste("Results 1: ",r2)
-  paste("Results 1: ",r3)
-  paste("Results 1: ",r4)
+#+BEGIN_SRC R
 
 #+END_SRC
 
 #+RESULTS:
-: [1] "Number of Layers: 3"
-: [1] "Layer Lengths: 2, 2, 1"
-: [1] "nlayers" "lengths" "nodes"   "biases"  "weights" "input"   "predict"
-: [8] "train"
-: Error in print(model$get_layer(1)) : attempt to apply non-function
 
 * Analysis
-#+BEGIN_SRC R
- 
+#+BEGIN_SRC R :results value drawer
+  set.seed(420)
+
+  ## separate dset into groups on 128
+
+  tr.im <- in.images[-ts.idx]
+  tr.lb <- in.labels[-ts.idx]
+  ts.im <- in.images[ts.idx]
+  ts.lb <- in.labels[ts.idx]
+
+
+  .size <- 128
+  .num  <- trnum/mbsize
+
+
+  for(mb in 1:.num) {
+  
+  }
+
+
+  lrs<-seq(-0.1, 1, 0.05)
+  models <- lapply(lrs,
+	 ann,
+	 node_lengths=c(784, 16, 4,4,10),
+	 dlist=,
+	 l=in.labels)
+
+
+  results <- lapply(models, function(model) length(which(model$tested)))
+  paste("Accuracy%: ",max(sort(unlist(results),decreasing=TRUE))/64)
 #+END_SRC
 
+#+RESULTS:
+:RESULTS:
+Accuracy%:  0.296875
+:END:
+
 * Conclusion
+  We have somehow trained a network to be worse than a coin. Great.
+
+  - Conclusions :: Going from unrolled hardcoded toy example that trains great
+                   for one image to an interface that can actually be trained on
+                   the dataset is much harder than a 1 night task.
+
+** Comparison
+
+#+BEGIN_SRC R 
+  ## lets try with pca
+  pcs <- prcomp(in.df[,-1])
+  pca.im <- pcs$x[,1:8] #split(...,row(pcs$x[,1:8]))
+  pca.tr <- pca.im[-ts.idx,]
+  pca.ts <- pca.im[ts.idx,]
+  linm <- lm(in.labels[-ts.idx]~pca.tr)
+  pred <- predict(linm, newdata=data.frame(pca.ts), )
 
 
+#+END_SRC
 
 * Sources
 ** Biblio
