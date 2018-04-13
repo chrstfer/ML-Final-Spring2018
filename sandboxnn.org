@@ -102,8 +102,10 @@ table(Labels=tr.df[,ncol(tr.df)])
   #rm(list=ls())
   set.seed(1)
 
-  activate <- function(node) { return(matrix(1/(1+exp(-node)))) }
-  sigprime <- function(node) { return(matrix(activate(node)*(1 - activate(node))))}
+  activate <- function(node)
+      return(matrix(1/(1+exp(-node))))
+  sigprime <- function(node)
+      return(matrix(activate(node)*(1 - activate(node))))
 
   model <- list()
   truth <- 1
@@ -117,53 +119,50 @@ table(Labels=tr.df[,ncol(tr.df)])
   .nlayers <- length(.lengths)
 
   model$nodes <- mapply(matrix,
-                        data=1,
-                        ncol=1,
-                        nrow=.lengths)
+			data=1,
+			ncol=1,
+			nrow=.lengths)
 
   model$weights <-  lapply(1:(.nlayers-1),
-                           function(k) {
-                               matrix(rnorm(.lengths[k+1]*.lengths[k]),
-                                      nrow=.lengths[k+1],
-                                      ncol=.lengths[k])
-                           })
+			   function(k) {
+			       matrix(rnorm(.lengths[k+1]*.lengths[k]),
+				      nrow=.lengths[k+1],
+				      ncol=.lengths[k])
+			   })
 
   .b <- numeric()
   .b <- lapply(.lengths[-1], rnorm)
   model$biases <- mapply(matrix,
-                         data=.b,
-                         ncol=1,
-                         nrow=.lengths[-1])
-
-  ## ???
-  ## model$nodes[-1] <- lapply(1:(.nlayers-1),
-  ##                           function(k) {
-  ##                               activate(model$weights[[k]]%*%model$nodes[[k]]
-  ##                                        + model$biases[[k]])
-  ##                           })
-
+			 data=.b,
+			 ncol=1,
+			 nrow=.lengths[-1])
 
   for(i in 1:250) {
-      
-                              # Feed Forward
+
+			      # Feed Forward
 
       model$nodes[[1]] <- matrix(model$input)
 
       model$active[[1]] <- activate(model$nodes[[1]])
 
       model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]]
-                          +model$biases[[1]]
+			  +model$biases[[1]]
 
       model$active[[2]] <- activate(model$nodes[[2]])
 
       model$nodes[[3]] <- model$weights[[2]]%*%model$active[[1]]
-                          +model$biases[[2]]
+			  +model$biases[[2]]
 
       model$active[[3]] <- activate(model$nodes[[3]])
 
-      
-                              # Backprop
-      
+      for(i in 1:3) {
+	  model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]]
+	  +model$biases[[1]]
+      }
+    
+    
+			      # Backprop
+
       #cat("PREDICTION:", model$active[[3]], "\n")
       #cat("ERROR:", model$active[[3]]-truth, "\n")
       errs[i] <- model$active[[3]] - truth
@@ -171,86 +170,44 @@ table(Labels=tr.df[,ncol(tr.df)])
       del <- list()
 
       del[[2]] <- (model$active[[3]] - truth) * sigprime(model$nodes[[3]])
-      
-      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
-      
 
-                              # Update
-      
+      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
+
+
+			      # Update
+
       w2 <- model$weights[[2]] - learningrate*( del[[2]]%*%t(model$active[[2]]) )
-      
+
       w1 <- model$weights[[1]] - learningrate*( del[[1]]%*%t(model$active[[1]]) )
-      
+
       model$weights[[2]] <- w2
-      
+
       model$weights[[1]] <- w1
-      
+
 
       b2 <- model$biases[[2]] - learningrate*del[[2]]
-      
+
       b1 <- model$biases[[1]] - learningrate*del[[1]]
-      
+
       model$biases[[2]] <- b2
-      
-      model$biases[[1]] <- b1
-      
+
+      model$biases[[1]] <- b1   
   }
-
-
-
-  # ~~~ Junk that might be useful
-
-  ## # save node vectors without activation for backprop
-  ## .nodes <- lapply(1:(.nlayers-1),
-  ##                   function(k) {
-  ##                       model$weights[[k]]%*%model$nodes[[k]]
-  ##                       + model$biases[[k]]
-  ##                   })
-
-  ## yhat <- activate(model$nodes[[.nlayers]])
-
-  ## ## Backprop
-  ## err <- yhat - truth
-  ## err
-
-  ## # For every activated output node in err vector, apply element-wise
-  ## # multiplication to derivative of activation function of output
-  ## # node. This is the "gradient" at the output layer.
-  ## nabla <- function(err, layer){
-  ##     return(matrix(err*sigprime(.nodes[[layer-1]])))
-  ## }
-
-  ## dely <- nabla(err=err,3)
-  ## dely
-
-
-  ## delcdelw2 <- model$nodes[[3]]%*%dely
-  ## model$weights[[2]] <- model$weights[[2]] + t(matrix(learningrate*delcdelw2))
-  ## model$biases[[2]] <- model$biases[[2]] + learningrate*dely
-
-
-  ## delw2 <- nabla(err=t(model$weights[[2]])%*%dely, 2)
-  ## delw2
-
-  ## delcdelw1 <- model$nodes[[1]]%*%delw2
-  ## model$weights[[1]] <- model$weights[[1]] + t(matrix(learningrate*delcdelw1))
-  ## model$biases[[1]] <- model$biases[[1]] + learningrate*delw2
-
-
-  ## model$biases[[2]] <- model$biases[[2]] + delw2
-
-
-
 #+END_SRC
 
 #+RESULTS:
 
+** Results
 #+BEGIN_SRC R :results graphics :exports output :file plot.png
 plot(abs(errs))
 #+END_SRC
 
 #+RESULTS:
 [[file:plot.png]]
+
+** Notes
+   - Why separate active vs nodes? why not `model$nodes <- activate(the multiplication)`?
+   - 
 
 
 * MNIST?
@@ -385,4 +342,56 @@ sum((model$active[[3]] - truth)^2)
 
 #+RESULTS:
 : 0.0324069053397839
+
+
+* Junk that might be useful
+#+BEGIN_SRC R
+  # ~~~ Junk that might be useful
+
+  ## # save node vectors without activation for backprop
+  ## .nodes <- lapply(1:(.nlayers-1),
+  ##                   function(k) {
+  ##                       model$weights[[k]]%*%model$nodes[[k]]
+  ##                       + model$biases[[k]]
+  ##                   })
+
+  ## yhat <- activate(model$nodes[[.nlayers]])
+
+  ## ## Backprop
+  ## err <- yhat - truth
+  ## err
+
+  ## # For every activated output node in err vector, apply element-wise
+  ## # multiplication to derivative of activation function of output
+  ## # node. This is the "gradient" at the output layer.
+  ## nabla <- function(err, layer){
+  ##     return(matrix(err*sigprime(.nodes[[layer-1]])))
+  ## }
+
+  ## dely <- nabla(err=err,3)
+  ## dely
+
+
+  ## delcdelw2 <- model$nodes[[3]]%*%dely
+  ## model$weights[[2]] <- model$weights[[2]] + t(matrix(learningrate*delcdelw2))
+  ## model$biases[[2]] <- model$biases[[2]] + learningrate*dely
+
+
+  ## delw2 <- nabla(err=t(model$weights[[2]])%*%dely, 2)
+  ## delw2
+
+  ## delcdelw1 <- model$nodes[[1]]%*%delw2
+  ## model$weights[[1]] <- model$weights[[1]] + t(matrix(learningrate*delcdelw1))
+  ## model$biases[[1]] <- model$biases[[1]] + learningrate*delw2
+
+
+  ## model$biases[[2]] <- model$biases[[2]] + delw2 
+
+  ## ???
+  ## model$nodes[-1] <- lapply(1:(.nlayers-1),
+  ##                           function(k) {
+  ##                               activate(model$weights[[k]]%*%model$nodes[[k]]
+  ##                                        + model$biases[[k]])
+  ##                           })
+#+END_SRC
 

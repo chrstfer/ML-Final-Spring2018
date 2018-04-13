@@ -183,8 +183,8 @@ table(Labels=tr.df[,ncol(tr.df)])
       class(model) <- "model.ann.classifier"
 
       .lengths <- c(length.input,
-		    length.hidden,
-		    length.output)
+		   length.hidden,
+		   length.output)
       ## print(lengths)
       n.layers <- length(.lengths)
 
@@ -198,7 +198,7 @@ table(Labels=tr.df[,ncol(tr.df)])
       model$lengths <- .lengths
 
       .nodes <- mapply(matrix,
-		       data=0,
+		       data=1,
 		       ncol=1,
 		       nrow=.lengths)
       model$nodes <- .nodes
@@ -241,6 +241,7 @@ table(Labels=tr.df[,ncol(tr.df)])
       ## Train from df with labels, return model
       model$train <- function(train.df, train.labels) {
 	  ret.model <- list()
+
 	  return(ret.model)
       }
 
@@ -262,6 +263,7 @@ table(Labels=tr.df[,ncol(tr.df)])
       .nodes <-   .model$nodes
       .weights <- .model$weights
       .biases <-  .model$biases
+
 
       ## Feed forward
       ##     forwardstep <-
