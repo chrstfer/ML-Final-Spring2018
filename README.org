@@ -1,3 +1,9 @@
+#+AUTHOR: Chris Carrigan Brolly and Matthew Sears
+#+TITLE: ML Final Project -- README
+#+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
+#+PROPERTY: 
+
+
 * ML-Final-Spring2018
 Machine Learning Final Project -- Spring 2018 at Wentworth Institute of Technology
 
