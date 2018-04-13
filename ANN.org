@@ -26,7 +26,6 @@ of a hand-written digit:
 
 file:https://www.tensorflow.org/versions/r1.1/images/MNIST-Matrix.png
 
-
 ** Procedure
 We convert these matrices into column vectors in =R=, where each row
 represents an individual pixel. This turns into our input layer for
@@ -87,8 +86,6 @@ cost function it's given is minimized through gradient descent.
 _Cost Function:_
 
 file:http://neuralnetworksanddeeplearning.com/images/tikz21.png
-
-
 
 ** Reference
 http://neuralnetworksanddeeplearning.com/
@@ -221,7 +218,7 @@ http://neuralnetworksanddeeplearning.com/
 		   learningrate) {
 
        if(tr.idx==0 || ts.idx==0) {
-	   tr.d <- lapply(dlist,as.vector)
+	   tr.d <- lapply(dlist, as.vector)
 	   tr.l <- lbls
 	   do.test <- FALSE
        } else {        
@@ -238,7 +235,8 @@ http://neuralnetworksanddeeplearning.com/
        model$nlayers <- length(model$lengths)
        nlayers <- model$nlayers
 
-       normalize <- function(x){return(x/sum(x))}
+       ## normalize <- function(x)
+       ##     return(x/sum(x))
        activate <- function(node)
 	   return(matrix(1/(1+exp(-node))))
        sigprime <- function(node)
@@ -250,11 +248,11 @@ http://neuralnetworksanddeeplearning.com/
 			      data=lapply(lengths[-1], rnorm),
 			      ncol=1,
 			      nrow=lengths[-1])
-       model$weights <- lapply(1:(nlayers-1),
+       model$weights <- lapply(2:nlayers,
 			       function(k) {
-				   matrix(rnorm(lengths[k+1]*lengths[k]),
-					  nrow=lengths[k+1],
-					  ncol=lengths[k])})
+				   matrix(rnorm(lengths[k]*lengths[k-1]),
+					  nrow=lengths[k],
+					  ncol=lengths[k-1])})
 
        ## semi-Pure function: references but does not modify its parent env
        model$predict <- function(input) {
@@ -265,10 +263,9 @@ http://neuralnetworksanddeeplearning.com/
 	   active[[1]] <- activate(nodes[[1]])
 
 	   for(i in 2:nlayers) {
-	       nodes[[i]] <- (model$weights[[i-1]] %*% active[[i-1]]  + biases[[i-1]])
+	       nodes[[i]] <- (model$weights[[i]] %*% active[[i-1]]  + biases[[i-1]])
 	       active[[i]] <- activate(nodes[[i]])
 	   }
-
 	   which.max(as.vector(active[[nlayers]]))-1
        }
 
@@ -285,25 +282,29 @@ http://neuralnetworksanddeeplearning.com/
 	   active[[1]] <- as.matrix(activate(nodes[[1]]))
 
 	   for(i in 2:nlayers) {
-	       nodes[[i]] <- (weights[[i-1]] %*% active[[i-1]])  + biases[[i-1]]
+	       nodes[[i]] <- (weights[[i]] %*% active[[i-1]])  + biases[[i-1]]
 	       active[[i]] <- activate(nodes[[i]])
 	   }
 
 	   del <- list()
-	   print(active[[nlayers]])
-	   del[[(nlayers - 1)]] <-  (active[[nlayers]] - truth) * sigprime(nodes[[nlayers]])
+	   ##print(active[[nlayers]])
+	   ##print(weights[[nlayers-1]])
+	   del[[nlayers]] <- (active[[nlayers]] - truth) * sigprime(nodes[[nlayers]])
 	   ## n-1, n-2, .. 3, 2
-	   for(i in seq((nlayers-1), 2, -1)) {
-	       print(i)
-	       del[[i-1]] <- (t(model$weights[[i]]) %*% del[[i]])# * sigprime(nodes[[i]])
+	   for(i in seq(nlayers, 2, -1)) {
+	       ## print(i)
+	       del[[i-1]] <- (t(model$weights[[i]]) %*% del[[i]]) * sigprime(nodes[[i]])
 	   }
 
-	   weights <<- lapply(1:length(weights),
-			      function(i)
-				  return((weights[[i]] - learningrate * del[[i]]) %*% t(active[[i]])))
+	   weights <<- lapply(2:length(weights),
+			      function(i) {
+				  print(del[[i]])
+				  print(i)
+				  return( weights[[i]] - learningrate * (del[[i]] %*% t(active[[i]])))
+			      })
 	   biases <<- lapply(1:length(biases),
 			     function(i)
-				 return(biases[[i]] - learningrate * del[[i]]))                    
+				 return(biases[[i]] - learningrate * del[[i]]))                 
        }
 
        test <- function(inputs, labels) {        
