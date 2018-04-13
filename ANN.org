@@ -2,7 +2,7 @@
 #+AUTHOR: Chris Carrigan Brolly
 #+TITLE: Artificial Neural Nets 
 #+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
-#+PROPERTY: header-args :session ANNimpl
+#+PROPERTY: header-args :session ANNimpl :exports both
 
 * Introduction
 Machine Learning Final Project -- Spring 2018 at Wentworth Institute of Technology
@@ -264,7 +264,115 @@ http://neuralnetworksanddeeplearning.com/
    - print functions :: layer, model
    - plot functions :: model, inputs, outputs (eg plot the input rows of tr.df,
                        and output of predict
+
+*** Sandbox/Toy Example
+#+BEGIN_SRC R :results output graphics :file imgs/tests/learn1.png 
+   #rm(list=ls())
+  set.seed(1)
+
+  activate <- function(node) {
+      return(matrix(1/(1+exp(-node))))
+  }
+  sigprime <- function(node) {
+      return(matrix(activate(node)*(1 - activate(node))))
+  }
+
+  model <- list()
+  truth <- 1
+  learningrate <- 0.25
+  errs <- c()
+
+  .lengths <- c(2,2,1) #I,H,O
+
+  model$input <- c(1,0)
+
+  .nlayers <- length(.lengths)
+
+  model$nodes <- mapply(matrix,
+			data=1,
+			ncol=1,
+			nrow=.lengths)
+
+  model$weights <-  lapply(1:(.nlayers-1),
+			   function(k) {
+			       matrix(rnorm(.lengths[k+1]*.lengths[k]),
+				      nrow=.lengths[k+1],
+				      ncol=.lengths[k])
+			   })
+
+  .b <- numeric()
+  .b <- lapply(.lengths[-1], rnorm)
+  model$biases <- mapply(matrix,
+			 data=.b,
+			 ncol=1,
+			 nrow=.lengths[-1])
+
+  ## ???
+  ## model$nodes[-1] <- lapply(1:(.nlayers-1),
+  ##                           function(k) {
+  ##                               activate(model$weights[[k]]%*%model$nodes[[k]]
+  ##                                        + model$biases[[k]])
+  ##                           })
+
+
+  for(i in 1:256) {
+			      # Feed Forward
+      model$nodes[[1]] <- matrix(model$input)
+      model$active[[1]] <- activate(model$nodes[[1]])
+      model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]]
+			  +model$biases[[1]]
+      model$active[[2]] <- activate(model$nodes[[2]])
+      model$nodes[[3]] <- model$weights[[2]]%*%model$active[[1]]+model$biases[[2]]
+      model$active[[3]] <- activate(model$nodes[[3]])
+
+
+					  # Backprop
+
+      #cat("PREDICTION:", model$active[[3]], "\n")
+      #cat("ERROR:", model$active[[3]]-truth, "\n")
+      errs[i] <- model$active[[3]] - truth
+
+      del <- list()
+
+      del[[2]] <- (model$active[[3]] - truth) * sigprime(model$nodes[[3]])
+
+      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
+
+
+			      # Update
+
+      w2 <- model$weights[[2]] - learningrate * (del[[2]]%*%t(model$active[[2]]))
+      w1 <- model$weights[[1]] - learningrate * (del[[1]]%*%t(model$active[[1]]))
+
+      model$weights[[2]] <- w2
+      model$weights[[1]] <- w1
+
+
+      b2 <- model$biases[[2]] - learningrate*del[[2]]
+      b1 <- model$biases[[1]] - learningrate*del[[1]]
+      model$biases[[2]] <- b2
+      model$biases[[1]] <- b1
+
+  }
+plot(abs(errs))
+#+END_SRC
+
+#+RESULTS:
+[[file:imgs/tests/learn1.png]]
+
+
+
 *** Model
+    The below isn't especially functional. The intent is to produce a function
+    of similar capacity to other available modelling functions such as knn,
+    naiveBayes, and svm. The end result would be a library of functions as
+    detailed in the above todo. 
+
+    This was a difficult prospect to complete in a week. The above toy example
+    is quite slow, with a noticable pause just to train the network to recognize
+    one image. Below we tried to fix some of these issues, attempting to limit
+    the amount of memory copying and reduce the total number of commands executed. 
+
  #+BEGIN_SRC R
    ann <- function(node_lengths,
 		   dlist, lbls,
@@ -382,14 +490,18 @@ http://neuralnetworksanddeeplearning.com/
 
  #+RESULTS:
 
- #+BEGIN_SRC R
+ #+BEGIN_SRC R :results value
  model <- ann(c(784,16,16,1),tr.fives,tr.fives.l,learningrate=0.05)
+ model
  #+END_SRC
 
  #+RESULTS:
- : TRUE
 
 * Analysis
+  A previous version was producing (abysmal) results. This could have actually
+  been a problem with the given network structure. This version still exists in
+  git,
+
  #+BEGIN_SRC R :results value drawer
    set.seed(420)
 
@@ -424,34 +536,43 @@ http://neuralnetworksanddeeplearning.com/
 
  #+RESULTS:
  :RESULTS:
- Accuracy%:  0.296875
+ Accuracy:  0.296875
  :END:
 
 * Conclusion
   Difficulty with the language (and the functional paradigm) made it tough to
-  implement the features we initially envisioned. 
+  implement the features we initially envisioned. We have a semi-functional toy
+  example that trains on one image, proving our feedforward/backprop
+  works. However, turning this into a functional package for arbitrary
+  Multi-layer Perceptron networks was a difficult endeavour. Though we had
+  reasonable success with the single digit yes or no problem, our results at a
+  producing a single network for multiple digit were lackluster at best. 
 
-*** Comparison
+  That being said, 
+  
+  
+  We plan on continuing to develop this project, hoping to produce a toy library
+  capable of supporting arbitrary
 
- #+BEGIN_SRC R 
-   ## lets try with pca
-   pcs <- prcomp(in.df[,-1])
-   pca.im <- pcs$x[,1:8] #split(...,row(pcs$x[,1:8]))
-   pca.tr <- pca.im[-ts.idx,]
-   pca.ts <- pca.im[ts.idx,]
-   linm <- lm(in.labels[-ts.idx]~pca.tr)
-   pred <- predict(linm, newdata=data.frame(pca.ts), )
+** Followup Questions
+- how can we optimize? What performance features does R have?
+  - Intel GLAS?
+- Does R have any kind of recursion optimizations? If it does tail-call
+  recursion, or something similar could be implemented with environments (maybe
+  a C/++ module? if we're feeling ambitious), we might be able to simplify this
+  code while simultaneously preventing a ton of memory copying.
+  
+* Sources/Bibliography
+  We read these in the process of completing this project, mostly consulting the
+  math derivations, especially when attempting to write the single digit toy
+  example, and then again when attempting to convert that to an R class that can
+  handle arbitrary networks.
 
-
- #+END_SRC
-
-* Sources
-** Biblio
-   These I read in the process of completing this project. In places where
-   specific citations could be made, I have places them and linked here. 
+  Also consulted were more resources on the R language than I kept track of, but
+  the website [[https://www.r-bloggers.com/][R Bloggers]] was especially useful, as were the built in docs.
 
 - https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf
 - https://en.wikipedia.org/wiki/Perceptron
 - https://cran.r-project.org/web/packages/sigmoid/sigmoid.pdf
-*** backprop
+*** backprop diff-eqs
     https://github.com/mnielsen/neural-networks-and-deep-learning/blob/master/src/network.py
