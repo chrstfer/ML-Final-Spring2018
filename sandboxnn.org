@@ -97,7 +97,7 @@ table(Labels=tr.df[,ncol(tr.df)])
 
 
 * Simple
-
+  
 #+BEGIN_SRC R :exports both :results output
   #rm(list=ls())
   set.seed(1)
@@ -107,98 +107,76 @@ table(Labels=tr.df[,ncol(tr.df)])
   sigprime <- function(node)
       return(matrix(activate(node)*(1 - activate(node))))
 
-  model <- list()
   truth <- 1
   learningrate <- 0.25
   errs <- c()
+  .lengths <- c(2,3,3,1) # I,H,O
 
-  .lengths <- c(2,2,1) # I,H,O
 
-  model$input <- c(1,0)
-
+  model <- list()
   .nlayers <- length(.lengths)
-
+  model$input <- matrix(c(1,0))
   model$nodes <- mapply(matrix,
-			data=1,
+			data=lapply(.lengths,rnorm, sd=.37),
 			ncol=1,
 			nrow=.lengths)
-
   model$weights <-  lapply(1:(.nlayers-1),
 			   function(k) {
 			       matrix(rnorm(.lengths[k+1]*.lengths[k]),
 				      nrow=.lengths[k+1],
-				      ncol=.lengths[k])
-			   })
-
-  .b <- numeric()
-  .b <- lapply(.lengths[-1], rnorm)
+				      ncol=.lengths[k])})
   model$biases <- mapply(matrix,
-			 data=.b,
+			 data=lapply(.lengths[-1], rnorm),
 			 ncol=1,
 			 nrow=.lengths[-1])
 
-  for(i in 1:250) {
-
+  n <- 0
+  for(n in 1:250) {
+    
 			      # Feed Forward
-
-      model$nodes[[1]] <- matrix(model$input)
-
+      model$nodes[[1]] <- model$input
       model$active[[1]] <- activate(model$nodes[[1]])
 
-      model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]]
-			  +model$biases[[1]]
-
-      model$active[[2]] <- activate(model$nodes[[2]])
-
-      model$nodes[[3]] <- model$weights[[2]]%*%model$active[[1]]
-			  +model$biases[[2]]
-
-      model$active[[3]] <- activate(model$nodes[[3]])
-
-      for(i in 1:3) {
-	  model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]]
-	  +model$biases[[1]]
+      ## loop through the rest
+      for(i in 2:.nlayers) {
+	  model$nodes[[i]] <- model$weights[[i-1]] %*% model$active[[i-1]] + model$biases[[i-1]]
+	  model$active[[i]] <- activate(model$nodes[[i]])
       }
-    
-    
-			      # Backprop
 
-      #cat("PREDICTION:", model$active[[3]], "\n")
-      #cat("ERROR:", model$active[[3]]-truth, "\n")
-      errs[i] <- model$active[[3]] - truth
+					  # record error of feed forward
+      errs[n] <- model$active[[.nlayers]] - truth
 
+    
+					  # Backprop
       del <- list()
+      del[[(.nlayers-1)]] <- (model$active[[.nlayers]] - truth) * sigprime(model$nodes[[.nlayers]])
+      ## Loop throught the rest
+      for(i in seq((.nlayers-1),2,-1)) {
+	  print(i)
+	  del[[i-1]] <- (t(model$weights[[i]]) %*% del[[i]]) * sigprime(model$nodes[[i]])
+      }       
 
-      del[[2]] <- (model$active[[3]] - truth) * sigprime(model$nodes[[3]])
-
-      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
-
-
-			      # Update
-
-      w2 <- model$weights[[2]] - learningrate*( del[[2]]%*%t(model$active[[2]]) )
-
-      w1 <- model$weights[[1]] - learningrate*( del[[1]]%*%t(model$active[[1]]) )
-
-      model$weights[[2]] <- w2
-
-      model$weights[[1]] <- w1
-
-
-      b2 <- model$biases[[2]] - learningrate*del[[2]]
-
-      b1 <- model$biases[[1]] - learningrate*del[[1]]
-
-      model$biases[[2]] <- b2
-
-      model$biases[[1]] <- b1   
+    
+					  # Update                                        
+      .new.w <- list()
+      for(i in length(model$weights):1) {
+	  .new.w[[i]] <- model$weights[[i]] - learningrate * del[[i]] %*% t(model$active[[i]])
+      }
+      model$weights <- .new.w
+      .new.b <- list()
+      for(i in length(model$weights):1) {
+	  .new.b[[i]] <- model$biases[[i]] - learningrate * del[[i]]
+      }
+      model$biases <- .new.b
   }
+
+    
 #+END_SRC
 
 #+RESULTS:
 
 ** Results
-#+BEGIN_SRC R :results graphics :exports output :file plot.png
+#+BEGIN_SRC R :results graphics :exports output :file imgs/tests/basic-errplot.png
 plot(abs(errs))
 #+END_SRC
 
@@ -222,54 +200,54 @@ Using the first training example.
   model <- list()
   model$input <- as.vector(tr.images[[1]])
   .lengths <- c(784, 4, 10)
-  truth <- matrix(c(0,0,0,0,0,1,0,0,0,0), ncol=1) # 5
+  truth <- matrix(c(0,0,0,0,0,1,0,0,0,0), ncol=1) # 5 (index by 1 means digits[1]=0)
   ## ~~
 
   .nlayers <- length(.lengths)
 
   model$nodes <- mapply(matrix,
-                         data=1,
-                         ncol=1,
-                         nrow=.lengths)
+			 data=1,
+			 ncol=1,
+			 nrow=.lengths)
 
   model$weights <-  lapply(1:(.nlayers-1),
-                            function(k) {
-                                matrix(rnorm(.lengths[k+1]*.lengths[k]),
-                                       nrow=.lengths[k+1],
-                                       ncol=.lengths[k])
-                            })
+			    function(k) {
+				matrix(rnorm(.lengths[k+1]*.lengths[k]),
+				       nrow=.lengths[k+1],
+				       ncol=.lengths[k])
+			    })
 
   .b <- numeric()
   .b <- lapply(.lengths[-1], rnorm)
   model$biases <- mapply(matrix,
-                         data=.b,
-                         ncol=1,
-                         nrow=.lengths[-1])
+			 data=.b,
+			 ncol=1,
+			 nrow=.lengths[-1])
 
 
   for(i in 1:250) {
-       
-                                          # Feed Forward
-      
+
+					  # Feed Forward
+
 
       model$nodes[[1]] <- matrix(model$input)
 
       model$active[[1]] <- activate(model$nodes[[1]])
 
       model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]] +
-          model$biases[[1]]
+	  model$biases[[1]]
 
       model$active[[2]] <- activate(model$nodes[[2]])
 
       model$nodes[[3]] <- model$weights[[2]]%*%model$active[[2]] +
-          model$biases[[2]]
+	  model$biases[[2]]
 
       model$active[[3]] <- activate(model$nodes[[3]])
 
-       
-                                          # Backprop
+
+					  # Backprop
       #model$active[[3]] <- normalize(model$active[[3]]) # probability vector
-       
+
       #cat("PREDICTION:", model$active[[3]], "\n")
       #cat("ERROR:", model$active[[3]]-truth, "\n")
       errs[[i]] <- model$active[[3]] - truth
@@ -277,31 +255,31 @@ Using the first training example.
       del <- list()
 
       del[[2]] <- (model$active[[3]] - truth) * sigprime(model$nodes[[3]])
-       
-      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
-       
 
-                                          # Update
-      
-       
+      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
+
+
+					  # Update
+
+
       w2 <- model$weights[[2]] - learningrate *
-          ( del[[2]]%*%t(model$active[[2]]) )
-       
+	  ( del[[2]]%*%t(model$active[[2]]) )
+
       w1 <- model$weights[[1]] - learningrate *
-          ( del[[1]]%*%t(model$active[[1]]) )
-       
+	  ( del[[1]]%*%t(model$active[[1]]) )
+
       model$weights[[2]] <- w2
-       
+
       model$weights[[1]] <- w1
 
       b2 <- model$biases[[2]] - learningrate*del[[2]]
-       
+
       b1 <- model$biases[[1]] - learningrate*del[[1]]
-       
+
       model$biases[[2]] <- b2
-       
+
       model$biases[[1]] <- b1
-       
+
   }
 #+END_SRC
 
