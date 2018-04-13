@@ -4,7 +4,7 @@
 #+PROPERTY: 
 
 
-* ML-Final-Spring2018
+* Introduction
 Machine Learning Final Project -- Spring 2018 at Wentworth Institute of Technology
 
 ** TODO 
