@@ -1,2 +1,94 @@
+#+AUTHOR: Chris Carrigan Brolly and Matthew Sears
+#+TITLE: ML Final Project -- README
+#+HTML_HEAD: <link href="http://gongzhitaao.org/orgcss/org.css" rel="stylesheet" type="text/css" />
+#+PROPERTY: 
+
+
 * ML-Final-Spring2018
 Machine Learning Final Project -- Spring 2018 at Wentworth Institute of Technology
+
+** TODO 
+
+- Make in-line images show up
+
+  file:http://neuralnetworksanddeeplearning.com/images/mnist_100_digits.png
+
+- Fix up $\LaTeX$
+
+** MNIST
+
+We will use the MNIST hand-written digits dataset, as it's the
+canonical dataset for state-of-the-art machine learning algorithms
+simply because of how clean and well-crafted it is.
+
+Here's an example of the matrix representation of a 28x28 pixel image
+of a hand-written digit: 
+
+file:https://www.tensorflow.org/versions/r1.1/images/MNIST-Matrix.png
+
+
+** Procedure
+We convert these matrices into column vectors in =R=, where each row
+represents an individual pixel. This turns into our input layer for
+our neural network where each input node, or sigmoid neuron, is a
+pixel.
+
+file:https://ml4a.github.io/images/figures/mnist_2layers.png
+
+The hidden layer is one of the main reasons why neural networks are
+successful. It essentially provides an additional layer of abstraction
+(no pun intended).
+
+There are 10 digits in total, which means we have 10 classes for our
+model, and subsequently 10 output neurons in our output layer.
+
+_Activation Function:_
+
+This is what allows us to cook with gas -- an activation function
+involves the introduction of a non-linearity. It is often viewed
+analagous to the rate of action potential firing in the brain, and
+basically turns our previously linear classifiers into more flexible
+perceptrons called neurons.
+
+We used the sigmoid function:
+\[ 
+\sigma(z) = \frac{1}{1 + e^{-z}}
+\]
+
+where, for example with a single hidden neuron $z$,
+
+$$z = {\bf w} \cdot x + b$$
+
+The first part of that sum is the dot product of the total input going
+into the neuron, i.e., the total/net weighted inputs. The second part
+is the bias associated with the neuron, which is basically analogous
+to how hard/easy it is for that neuron to fire.
+
+**** TODO : big/small and  +/- weights/biases correspond to? 
+Useful properties of the sigmoid function:
+
+- "Squashes" any input into the range $[0,1]$ 
+- Easy to use when training our model with backpropagation
+  + $\sigma^\prime(z) = \sigma(z) (1-\sigma(z))$
+
+
+\[
+\lim_{z \to -\infty} \frac{1}{1 + e^{-z}} = 0 \\
+\lim_{z \to \infty}  \frac{1}{1 + e^{-z}} = \frac{1}{2} \\
+\lim_{z \to 0}       \frac{1}{1 + e^{-z}} = 1 \\
+\]
+
+*** Backpropagation
+
+Without backpropagation, the model would never learn. Learning in this
+case means having the model tune its weights and biases such that the
+cost function it's given is minimized through gradient descent.
+
+_Cost Function:_
+
+file:http://neuralnetworksanddeeplearning.com/images/tikz21.png
+
+
+
+** Reference
+http://neuralnetworksanddeeplearning.com/
