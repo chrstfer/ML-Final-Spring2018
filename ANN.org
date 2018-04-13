@@ -171,8 +171,7 @@ table(Labels=tr.df[,ncol(tr.df)])
 			 function(k) {
 			     matrix(rnorm(.lengths[k+1]*.lengths[k]),
 				    nrow=.lengths[k+1],
-				    ncol=.lengths[k])})
-    
+				    ncol=.lengths[k])})    
       for(n in 1:nrow(data)) {
 	  truth <- rep(0,10)
 	  truth[labels[n]+1] <- 1
@@ -182,14 +181,10 @@ table(Labels=tr.df[,ncol(tr.df)])
 	  ## We could definitely get this faster. Each iteration only depends
 	  ## on the previous layer's active, if we could keep passing that
 	  ## down the chain
-	  .weights[[1]] %*% .active[[1]]
+	  ## .weights[[1]] %*% .active[[1]]
 
 	  for(i in 2:(.nlayers)) {
-	      print(i)
-	      setBreakpoint()
-	      #print(dim(.weights[[i-1]]))
-	      #print(dim(.active[[i-1]]))                
-	      ##.nodes[[i]] <- .active[[i-1]] %*% .weights[[i-1]] + .biases[[i-1]]               
+	      print(i)	     
 	      .nodes[[i]] <- (.weights[[i-1]] %*% .active[[i-1]])  + .biases[[i-1]]
 	      .active[[i]] <- activate(.nodes[[i]])
 	  }
@@ -231,8 +226,6 @@ table(Labels=tr.df[,ncol(tr.df)])
 
 
   r1 <- predict(model, c(1,0))
-
-
 
   r2 <- predict(model, c(1,1))
   r3 <- predict(model, c(0,1))
