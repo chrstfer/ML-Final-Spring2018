@@ -181,7 +181,7 @@ plot(abs(errs))
 #+END_SRC
 
 #+RESULTS:
-[[file:plot.png]]
+[[file:imgs/tests/basic-errplot.png]]
 
 ** Notes
    - Why separate active vs nodes? why not `model$nodes <- activate(the multiplication)`?
@@ -190,104 +190,89 @@ plot(abs(errs))
 
 * MNIST?
 
+** Training
 Using the first training example.
-#+BEGIN_SRC R
+#+BEGIN_SRC R :results none
+  set.seed(1)
+
   ## Keeping everything else the same as toy example above, except for
   ## this stuff right here
-  normalize <- function(x){return(x/sum(x))}
 
-  errs <- list()
-  model <- list()
-  model$input <- as.vector(tr.images[[1]])
-  .lengths <- c(784, 4, 10)
+  normalize <- function(x)
+      return(x/sum(x))
+  activate <- function(node)
+      return(matrix(1/(1+exp(-node))))
+  sigprime <- function(node)
+      return(matrix(activate(node)*(1 - activate(node))))
+
+  learningrate <- 0.25
+  .lengths <- c(784, 16, 4, 10)
   truth <- matrix(c(0,0,0,0,0,1,0,0,0,0), ncol=1) # 5 (index by 1 means digits[1]=0)
-  ## ~~
+  errs <- list()
 
+
+  model <- list()
   .nlayers <- length(.lengths)
-
+  model$input <- as.vector(tr.images[[1]])
   model$nodes <- mapply(matrix,
-			 data=1,
-			 ncol=1,
-			 nrow=.lengths)
-
+			data=lapply(.lengths,rnorm, sd=.37),
+			ncol=1,
+			nrow=.lengths)
   model$weights <-  lapply(1:(.nlayers-1),
-			    function(k) {
-				matrix(rnorm(.lengths[k+1]*.lengths[k]),
-				       nrow=.lengths[k+1],
-				       ncol=.lengths[k])
-			    })
-
-  .b <- numeric()
-  .b <- lapply(.lengths[-1], rnorm)
+			   function(k) {
+			       matrix(rnorm(.lengths[k+1]*.lengths[k]),
+				      nrow=.lengths[k+1],
+				      ncol=.lengths[k])})
   model$biases <- mapply(matrix,
-			 data=.b,
+			 data=lapply(.lengths[-1], rnorm),
 			 ncol=1,
 			 nrow=.lengths[-1])
 
+  ## Training
+  for(n in 1:1000) {
 
-  for(i in 1:250) {
-
-					  # Feed Forward
-
-
-      model$nodes[[1]] <- matrix(model$input)
-
+			      # Feed Forward
+      model$nodes[[1]] <- model$input
       model$active[[1]] <- activate(model$nodes[[1]])
 
-      model$nodes[[2]] <- model$weights[[1]]%*%model$active[[1]] +
-	  model$biases[[1]]
+      ## loop through the rest
+      for(i in 2:.nlayers) {
+	  model$nodes[[i]] <- model$weights[[i-1]] %*% model$active[[i-1]] + model$biases[[i-1]]
+	  model$active[[i]] <- activate(model$nodes[[i]])
+      }
 
-      model$active[[2]] <- activate(model$nodes[[2]])
-
-      model$nodes[[3]] <- model$weights[[2]]%*%model$active[[2]] +
-	  model$biases[[2]]
-
-      model$active[[3]] <- activate(model$nodes[[3]])
-
+					  # record error of feed forward
+      .err <- (model$active[[.nlayers]] - truth)
+      errs[[n]] <- .err
 
 					  # Backprop
-      #model$active[[3]] <- normalize(model$active[[3]]) # probability vector
-
-      #cat("PREDICTION:", model$active[[3]], "\n")
-      #cat("ERROR:", model$active[[3]]-truth, "\n")
-      errs[[i]] <- model$active[[3]] - truth
-
       del <- list()
+      del[[(.nlayers-1)]] <- (model$active[[.nlayers]] - truth) * sigprime(model$nodes[[.nlayers]])
+      ## Loop throught the rest
+      for(i in seq((.nlayers-1),2,-1)) {
+	  del[[i-1]] <- (t(model$weights[[i]]) %*% del[[i]]) * sigprime(model$nodes[[i]])
+      }       
 
-      del[[2]] <- (model$active[[3]] - truth) * sigprime(model$nodes[[3]])
-
-      del[[1]] <- (t(model$weights[[2]])%*%del[[2]]) * sigprime(model$nodes[[2]])
-
-
-					  # Update
-
-
-      w2 <- model$weights[[2]] - learningrate *
-	  ( del[[2]]%*%t(model$active[[2]]) )
-
-      w1 <- model$weights[[1]] - learningrate *
-	  ( del[[1]]%*%t(model$active[[1]]) )
-
-      model$weights[[2]] <- w2
-
-      model$weights[[1]] <- w1
-
-      b2 <- model$biases[[2]] - learningrate*del[[2]]
-
-      b1 <- model$biases[[1]] - learningrate*del[[1]]
-
-      model$biases[[2]] <- b2
-
-      model$biases[[1]] <- b1
-
+					  # Update                                        
+      .new.w <- list()
+      for(i in length(model$weights):1) {
+	  .new.w[[i]] <- model$weights[[i]] - learningrate * del[[i]] %*% t(model$active[[i]])
+      }
+      model$weights <- .new.w
+      .new.b <- list()
+      for(i in length(model$weights):1) {
+	  .new.b[[i]] <- model$biases[[i]] - learningrate * del[[i]]
+      }
+      model$biases <- .new.b
   }
 #+END_SRC
 
-#+RESULTS:
 
-Prediction after training
+** Prediction 
+
+
 #+BEGIN_SRC R :results both :exports both
-which.max(as.vector(model$active[[3]])) -1 #
+which.max(as.vector(model$active[[.nlayers]])) - 1 #
 #+END_SRC
 
 #+RESULTS:
@@ -295,31 +280,47 @@ which.max(as.vector(model$active[[3]])) -1 #
 
 
 #+BEGIN_SRC R :results both :exports both
-model$active[[3]]
+model$active[[.nlayers]]
 #+END_SRC
 
 #+RESULTS:
-| 0.0586737214202425 |
-| 0.0576862044600085 |
-| 0.0580336343741622 |
-| 0.0632149651547858 |
-| 0.0527720103665108 |
-|  0.939454396075263 |
-| 0.0587205980714448 |
-|  0.058850624448067 |
-| 0.0458369170953963 |
-| 0.0530036243472745 |
+| 0.0268742268963425 |
+| 0.0276090115141976 |
+| 0.0270112449462544 |
+| 0.0279671025073374 |
+| 0.0275920869288741 |
+|  0.972744518193588 |
+| 0.0265384659461282 |
+| 0.0241555320569751 |
+| 0.0270018632725794 |
+| 0.0275394257004914 |
 
 
+** Error
+
+#+BEGIN_SRC R
+errs[[length(errs)]] 
+#+END_SRC
+
+#+RESULTS:
+|  0.0268742268963425 |
+|  0.0276090115141976 |
+|  0.0270112449462544 |
+|  0.0279671025073374 |
+|  0.0275920869288741 |
+| -0.0272554818064124 |
+|  0.0265384659461282 |
+|  0.0241555320569751 |
+|  0.0270018632725794 |
+|  0.0275394257004914 |
 
 
-Error after training
 #+BEGIN_SRC R :results both :exports both
 sum((model$active[[3]] - truth)^2)
 #+END_SRC
 
 #+RESULTS:
-: 0.0324069053397839
+: 1.15204402985591
 
 
 * Junk that might be useful

@@ -120,185 +120,116 @@ table(Labels=tr.df[,ncol(tr.df)])
 
 ** Model Class
 #+BEGIN_SRC R :exports both :results output
-  ## forwardstep <- function(model, k) {
-  ##     if(k==1)
-  ##         model$nodes[[k]] <- activate(model$weights[[k-1]]%*%model$input)
-  ##     else
-  ##         model$nodes[[k]] <- activate(model$weights[[k]]%*%model$nodes[[k]])
-  ##     return(model)
-  ## }
-
-  ## was inside model
-  ## model$get_layer <- function(k) { ## 1 -> k=nlayers->output=nodes[[n]]
-  ##     ret <- list()
-  ##     class(ret) <- "layer"
-  ##     ret$nodes  <- model$nodes[k]
-  ##     ret$weights<- ifelse(k==1, 0, model$weights[k-1])
-  ##     ret$biases <- ifelse(k==1, 0, model$biases[k-1])        
-  ##     return(ret)
-  ## }
-  ## layers <- list()
-  ## update_layers <- function() {
-  ##     layers <- list()
-  ##     layers[[1]] <- list(Nodes=model$nodes[[1]],
-  ##                    Weights=model$weights[[1]],
-  ##                    Biases=model$biases[[1]])
-  ##     for(i in 2:(model$nlayers-1)) {
-  ##         layers[[i]] <- list(Weights=model$weights[[i]],
-  ##                        Biases=model$biases[[i]],
-  ##                        Nodes=model$nodes[[i+1]])
-  ##     }            
-  ##     model$layers <- layers
-  ##     return(layers)
-  ## }
-
-  ## ## IMPORTANT: we need to profile this and the update function, think about
-  ## ## how best to implement this/model$layers so that it stays updated, 
-  ## model$get_layer <- function(k) {
-  ##     update_layers()
-  ##     if(k!=1)
-  ##         return(layers)
-  ##     else
-  ##         return(list(Weights=0,
-  ##                Biases=0,
-  ##                Nodes=model$nodes[[k]]))
-  ## }
-  ## error
-
   summary.model.ann.classifier <- function(model) {
       print(paste("Number of Layers: ", model$nlayers))
       print(paste("Respective Lengths: ", toString(model$lengths)))
   }
+
   summary.layers <- function(layers) {
       lapply(lapply(X=layers, str),print)
   }
 
-  model.gen.annc <- function(length.input,
-			     length.hidden,
-			     length.output,                          
-			     out.classes=as.factor(1:length.output),
-			     input=NULL,
+  model.gen.annc <- function(layers,
+			     training.data,
+			     training.labels,
 			     debug=TRUE) {    
-      model <- list()
-      class(model) <- "model.ann.classifier"
-
-      .lengths <- c(length.input,
-		   length.hidden,
-		   length.output)
-      ## print(lengths)
-      n.layers <- length(.lengths)
+    
+      .lengths <- layers    
+      .nlayers <- length(.lengths)
 
 
-      ## print(paste("Input Length:",     length.input))
       if(debug) print(paste("Number of Layers:", n.layers))
       if(debug) print(paste("Layer Lengths:",    toString(.lengths)))
-      ## print(paste("Output Length:",    length.output))
+    
+      model <- train(training.data, training.labels)
+      class(model) <- "model.ann.classifier"
+      return(model) 
+  }
 
-      model$nlayers <- n.layers
-      model$lengths <- .lengths
+    
+  normalize <- function(x){return(x/sum(x))}
+  activate <- function(node)
+      return(matrix(1/(1+exp(-node))))
+  sigprime <- function(node)
+      return(matrix(activate(node)*(1 - activate(node))))
 
+  train <- function(data, labels) { # row-wise dataframe and list
+      errs <- list()
+      .active <- mapply(matrix,
+		       data=1,
+		       ncol=1,
+		       nrow=.lengths)
       .nodes <- mapply(matrix,
 		       data=1,
 		       ncol=1,
 		       nrow=.lengths)
-      model$nodes <- .nodes
-
-      .biases <- numeric()
-      .biases <- lapply(.lengths, rnorm)
-      model$biases <- mapply(matrix,
-			     data=.biases,
-			     ncol=1,
-			     nrow=.lengths)
-
-
-      ## TODO: this needs to be converted to mapply or the function needs to be
-      ## fixed, rn it errors
-      .weights <- lapply(1:(length(model$nodes)-1),
+      .biases <- mapply(matrix,
+			data=lapply(.lengths, rnorm),
+			ncol=1,
+			nrow=.lengths)
+      .weights <- lapply(1:(.nlayers-1),
 			 function(k) {
 			     matrix(rnorm(.lengths[k+1]*.lengths[k]),
-				    nrow=.lengths[[k+1]],
-				    ncol=.lengths[[k]])
-			 })
-
-      model$weights <- .weights
-
-      ## model$biases <- lapply(1:(length(model$nodes)-1),
-      ##                        function(k)
-      ##                            matrix(rnorm(lengths[k+1]),
-      ##                                   nrow=lengths[k+1]))
-
-      model$input <- if(length(input))
-			 as.matrix(input)
-		     else
-			 .nodes[[1]]
-
-      model$nodes[[1]] <- model$input
-
-      ## activate <- function(node) {
-      ##         return(1/(1+exp(-node)))
-      ## }    
+				    nrow=.lengths[k+1],
+				    ncol=.lengths[k])})
     
-      ## Train from df with labels, return model
-      model$train <- function(train.df, train.labels) {
-	  ret.model <- list()
+      for(n in 1:nrow(data)) {
+	  truth <- rep(0,10)
+	  truth[labels[n]+1] <- 1
+        
+	  .nodes[[1]] <- matrix(data[n,],ncol=1)
+	  .active[[1]] <- activate(.nodes[[1]])
+	  ## We could definitely get this faster. Each iteration only depends
+	  ## on the previous layer's active, if we could keep passing that
+	  ## down the chain
+	  .weights[[1]] %*% .active[[1]]
 
-	  return(ret.model)
+	  for(i in 2:(.nlayers)) {
+	      print(i)
+	      setBreakpoint()
+	      #print(dim(.weights[[i-1]]))
+	      #print(dim(.active[[i-1]]))                
+	      ##.nodes[[i]] <- .active[[i-1]] %*% .weights[[i-1]] + .biases[[i-1]]               
+	      .nodes[[i]] <- (.weights[[i-1]] %*% .active[[i-1]])  + .biases[[i-1]]
+	      .active[[i]] <- activate(.nodes[[i]])
+	  }
+
+	  if(debug)
+	      errs[[n]] <- (model$active[[.nlayers]] - truth)
+
+	  del <- list()
+	  del[[(.nlayers-1)]] <- (.active[[.nlayers]] - truth) * sigprime(.nodes[[.nlayers]])
+	  ## Loop throught the rest
+	  for(i in seq((.nlayers-1),2,-1)) {
+	      del[[i-1]] <- (t(.weights[[i]]) %*% del[[i]]) * sigprime(.nodes[[i]])
+	  }
+
+	  .weights <- lapply(length(.weights):1,
+			     function(i)
+				 return(.weights[[i]] - learningrate * del[[i]] %*% t(.active[[i]])))
+        
+	  .biases <- lapply(length(.weights):1, 
+			    function(i)
+				return(.biases[[i]] - learningrate * del[[i]]))
       }
+      trained <- list()
+      trained$nodes <- .nodes
+      trained$weights <- .weights
+      trained$biases <- .biases
 
-      stopifnot(length(model$weights)==(model$nlayers-1))
-      return(model)    
+      trained$nlayers <- n.layers
+      trained$lengths <- .lengths
+    
+      return(trained)
   }
 
-  predict.model.ann.classifier <- function(.model,
-					   .input,
-					   activate=NULL) {
-      if(length(activate))
-	  activate <- sigmoid
-      else
-	  activate <- function(node) {
-	      return(1/(1+exp(-node)))
-	  }
-
-      .model$input <- .input
-      .nodes <-   .model$nodes
-      .weights <- .model$weights
-      .biases <-  .model$biases
-
-
-      ## Feed forward
-      ##     forwardstep <-
-      forwardstep <- function(k) {
-	  if(k==1) {
-	      print(paste("K: ",k))
-	      ## print(.nodes[[1]])
-	      return(.input)
-	  }
-	  else {
-	      print(paste("K: ",k))
-	      print(.weights[[k-1]])
-	      print(.nodes[[k-1]])
-	      return(activate( (.weights[[k-1]] %*% .nodes[[k-1]]) + .biases[[k]]))
-	  }
-      }
-    
-      .ret <- lapply(1:model$nlayers, forwardstep)
-      ## print(.ret)
-      return(.ret)
-      ## forwardstep(model, 2:model$nlayers)
-      ## prediction <- activate(model$nodes[[nlayers]])
-      ## return(prediction)
-  }
-
-  model.genstd <- function()
-      return(model.gen.annc(2,2,1, input=c(1,0)))
 
 
   ## basic layout, 4 layers of 5x1
   set.seed(1)
-  model <- model.gen.annc(2,2,1, input=c(1,0))
-  names(model)
 
-  print(model$nodes)
+
+
   r1 <- predict(model, c(1,0))
 
 
